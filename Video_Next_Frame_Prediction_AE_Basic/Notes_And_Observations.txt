@@ -1,0 +1,51 @@
+==============================
+=== NOTES AND OBSERVATIONS ===
+==============================
+
+- Autoencoder output was stuck on all zeros initially for test video sequence frames
+	* Unexpected because the same architecture network successfully reconstructed MNIST digits
+	* Change 1: don't preprocess, i.e. don't subtract mean RGB values
+	* ^ Reasoning: easier to get local min w/ zeros for zero-centered data input, could get stuck in local min
+	* Change 2: (what really did it) switch final output sigmoid to RELU 
+	* ^ Reasoning: faster training speeds show more progress for small-scale experiments; especially faster to escape local min
+	
+- AE experiments, one hyperparam at a time:
+	* Baseline: 32-16-8-maxpool-8-upsample-16-32 conv autoencoder (all 3x3 filters), adacelta, binary cross-entropy loss, 250 epochs, initial 10 images training, initial loss ~ 0.117
+	* ~doubling the size of conv layers (32 --> 64, 16 --> 32): little-to-no change on small batch of 10 images (250 epochs)
+	* changing metric to MAE of pixels (vs. binary cross-entropy): did not train much for given # epochs 
+	* changing metric to MSE of pixels (vs. binary cross-entropy): did not train much for given # epochs
+	* training for 1000 (4x) epochs: loss reduced to 0.113, a bit better visually
+	* removing two layers of max pooling (+ upsampling): similar losses but much better output image quality! 
+	* increase depth/params (64-32-16-8-8-16-32-64) but add in max pooling: loss of 0.116, a bit better than prev, but still not as good as removing pooling (2nd best)
+	* removing two layers of max pooling (+ upsampling) with different optimizer (sgd+momentum): much worse loss (0.1549), after having to tune down LR. Mostly garbage output, black screens i.e. not trained enough. 
+
+- AE experiments, one hyperparam at a time, starting with (wide encoding: 8-16-32-32-16-8 w/ one maxpool+upsample):
+	* Removing max pool + Big network (middle layer 128 filters): quick initial success, but then stalling at loss of ~0.1400 for a long time... 
+	* ^ Smaller by factor of 2 (still removing all pooling): a little easier to train, stalling closer to ~0.1390... 
+	* ^ Same but reducing batch size considerably (from 30 --> 6): a bit better overall, after similar time frame loss down to ~0.1375, but val is still improving nicely
+	* ^ Same but adding in max pooling again: almost identical to above, maybe a little easier to train
+	* Is there a long-term trade-off we're missing? Maybe the bigger models make things easier later on, though start slower. 
+	* ^^ Back to original model, but with same small (6) batch size: after 16 epochs, loss/val_loss = 0.1383 / 0.1392
+	* ^ Batch size back bigger (36): 												  loss/val_loss = 0.1409 / 0.1420, seems slower
+	* So more parameters == slower initial training. Bigger batch size == slower initial training. But can we say anything meaningful about longer-term experiments?
+	* ^ I.e. is there a correlation b/w what happens in the first, say 30 mins of training, and the next 10 hours? Right now: not willing to find out. 
+	
+- What makes sense depends on what we want
+	* Broadly: using less params (narrower encoder) is "good" for lightweight embedding / efficient reconstruction.
+	* Having way more params is "good" for rich representations that predict things. 
+	* Are we making 1) a reconstruction model, or 2) a scene understanding model? If we want to do things like predict the future, then the latter.
+	* Another difference b/w 1) and 2): num filters decrease with depth for 1), increase with depth for 2) 
+	* Why would "Scene Understanding" models (i.e. that can be used to predict something, not just reconstruct) need "taper" (reduce) num params?
+		- maybe good for sparse data exercises with control generalization
+	
+- Ideas for architectures 
+	* Don't pool / downsample so much. DSAE paper does it once, we tried it 3x technically (since already downsampled original video)
+	* Replacing the deconv decoder layer with DENSE. Also done in DSAE; eliminates need for upsampling
+	* Can RESIDUAL architectures be used to help "out learn" the squashing / downsampling effects, while maintaining them for more efficient encodings?
+	
+- Experiment: next-frame prediction using REVERSE architecture (wide encoding: 8-16-32-32-16-8 w/ one maxpool+upsample): 
+	* 100 epochs, adadelta, batch size of 20
+	* Pretty good! A little blurry but reconstruction went well. 
+	* Able to make a the "recursive resampling test video" (with resets), i.e. draw x(t+1) ~ p(x(t+1)|x(t)), and feed that back in, re-sample, ...
+	* ^ As expected, the output prediction images get blurry after a few (5 - 10) frames! 
+	* This is where 1) improved training (we didn't saturate test/val error by any means after 100 epochs) and 2) better architectures would help. 

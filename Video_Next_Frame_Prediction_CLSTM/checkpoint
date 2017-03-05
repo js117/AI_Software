@@ -1,0 +1,6 @@
+model_checkpoint_path: "/home/ubuntu/AI_Software/Video_Next_Frame_Prediction_CLSTM/VNFP_CLSTM-5200"
+all_model_checkpoint_paths: "/home/ubuntu/AI_Software/Video_Next_Frame_Prediction_CLSTM/VNFP_CLSTM-4800"
+all_model_checkpoint_paths: "/home/ubuntu/AI_Software/Video_Next_Frame_Prediction_CLSTM/VNFP_CLSTM-4900"
+all_model_checkpoint_paths: "/home/ubuntu/AI_Software/Video_Next_Frame_Prediction_CLSTM/VNFP_CLSTM-5000"
+all_model_checkpoint_paths: "/home/ubuntu/AI_Software/Video_Next_Frame_Prediction_CLSTM/VNFP_CLSTM-5100"
+all_model_checkpoint_paths: "/home/ubuntu/AI_Software/Video_Next_Frame_Prediction_CLSTM/VNFP_CLSTM-5200"
