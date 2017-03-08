@@ -18,7 +18,7 @@ from keras.layers import Input, Convolution2D, UpSampling2D, MaxPooling2D, ZeroP
 from keras.layers import Activation, Dropout, Flatten, Dense
 from keras.utils.np_utils import to_categorical
 from keras.callbacks import ModelCheckpoint, TensorBoard
-from keras.optimizers import RMSprop
+from keras.optimizers import RMSprop, SGD
 from keras.applications.vgg16 import VGG16
 from keras.preprocessing import image
 from keras.applications.vgg16 import preprocess_input
@@ -185,7 +185,7 @@ def QAPredictorModel():
 	network = Convolution2D(CONV_2, 3, 3, activation='elu', border_mode='same', name='conv_2')(network)
 	network = MaxPooling2D((2, 2), border_mode='same')(network)	# out: 28 x 28 x 30
 	network = Convolution2D(CONV_3, 3, 3, activation='elu', border_mode='same', name='conv_last')(network) # out: 7 x 7 x 32 ( == 1568 numbers)	
-	network = MaxPooling2D((2, 2), border_mode='same')(network) # out: 14 x 14 x 20 ( == 3920 #s)
+	network = MaxPooling2D((2, 2), border_mode='same', name='pool_last')(network) # out: 14 x 14 x 20 ( == 3920 #s)
 	network = Flatten(name='flatten')(network)
 	network = Dense(DENSE_1, activation='elu', name='dense_1')(network)
 	#network = Dropout(0.5)(network)
@@ -200,6 +200,57 @@ def QAPredictorModel():
 	model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
 	
 	return model
+
+############################################ HEATMAP ################################################
+	
+def target_category_loss(x, category_index, nb_classes):
+    return tf.multiply(x, K.one_hot([category_index], nb_classes)) # tf.mul ? 
+
+def target_category_loss_output_shape(input_shape):
+    return input_shape
+
+def normalize(x):
+    # utility function to normalize a tensor by its L2 norm
+    return x / (K.sqrt(K.mean(K.square(x))) + 1e-5)
+	
+# image is preprocessed: normalize to 0-1, expand_dims	
+def grad_cam(input_model, image, CAM_W, CAM_H, nb_classes, category_index, layer_name): 
+    model = Sequential()
+    model.add(input_model)
+
+    #nb_classes = 1000
+    target_layer = lambda x: target_category_loss(x, category_index, nb_classes)
+    model.add(Lambda(target_layer, output_shape = target_category_loss_output_shape))
+
+    loss = K.sum(model.layers[-1].output)
+    conv_output =  [l for l in model.layers[0].layers if l.name is layer_name][0].output
+    grads = normalize(K.gradients(loss, conv_output)[0])
+    gradient_function = K.function([model.layers[0].input], [conv_output, grads])
+
+    output, grads_val = gradient_function([image])
+    output, grads_val = output[0, :], grads_val[0, :, :, :] # e.g. output is size 14x14 x 20(feature maps)
+
+    weights = np.mean(grads_val, axis = (0, 1))
+    cam = np.ones(output.shape[0 : 2], dtype = np.float32)
+
+    for i, w in enumerate(weights):
+        cam += w * output[:, :, i]
+
+    cam = cv2.resize(cam, (CAM_W, CAM_H))
+    cam = np.maximum(cam, 0)
+    cam = cam / np.max(cam)
+
+    #Return to BGR [0..255] from the preprocessed image
+    image = image[0, :]
+    #image -= np.min(image)
+    #image = np.minimum(image, 255)
+
+    cam = cv2.applyColorMap(np.uint8(255*cam), cv2.COLORMAP_JET)
+    cam = np.float32(cam) + np.float32(image)
+    cam = 255 * cam / np.max(cam)
+    return np.uint8(cam)
+	
+############################################ HEATMAP ################################################	
 		
 class Softmax4D(Layer):
     def __init__(self, axis=-1,**kwargs):
@@ -241,21 +292,6 @@ def QAPM_Heatmap():
 	model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
 	
 	return model
-	
-def classificationModelToHeatmap(convnet, convnet_heatmap): # pass in Model `convnet_heatmap`
-	for layer in convnet_heatmap.layers:
-		if layer.name.startswith("conv"):
-			orig_layer = convnet.get_layer(layer.name)
-			layer.set_weights(orig_layer.get_weights())
-		elif layer.name.startswith("fc"):
-			orig_layer = convnet.get_layer(layer.name)
-			W,b = orig_layer.get_weights()
-			n_filter,previous_filter,ax1,ax2 = layer.get_weights()[0].shape
-			new_W = W.reshape((previous_filter,ax1,ax2,n_filter))
-			new_W = new_W.transpose((3,0,1,2))
-			new_W = new_W[:,:,::-1,::-1]
-			layer.set_weights([new_W,b])
-	return convnet_heatmap
 	
 def raw_frame_to_vgg(x):
 	x = (x.astype(float) - 127.5) / 255 
@@ -489,11 +525,22 @@ if __name__ == '__main__':
 	
 	QAPM = QAPredictorModel()
 	
-	QAPM.summary()
-	
 	InitModel("QAPM_aws_best.h5")
 	# or
 	#TrainOnData(); sys.exit()
+	
+	########## Test out heatmap stuff: #########
+	X_train, Y_train, _, _ = GetTrainingData()
+	print(X_train.shape); print(Y_train.shape)
+	
+	for image in X_train[30:40,:]:
+		img = np.expand_dims(image, axis=0)
+		print(img.shape)
+		heatmap_img = grad_cam(QAPM, img, CAM_W, CAM_H, nb_classes=3, category_index=0, layer_name="pool_last")
+		cv2.imshow('asdf', np.concatenate((image,heatmap_img), axis=0))
+		cv2.waitKey(0)
+	
+	sys.exit()
 	
 	
 	print("\n========== Welcome to the Big Solve Robotics QA Basic Demo ==========\n")
