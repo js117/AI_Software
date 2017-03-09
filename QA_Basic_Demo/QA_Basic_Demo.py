@@ -141,10 +141,6 @@ def VGGFeatures(model, x): # x is image (n x W x H x 3), model is VGG
 def FramesToVGGFeatures(VGG_model, frames): 
 	vgg_cam_features = VGGFeatures(VGG_model, frames[:,:,:])
 
-	
-def VisualizeVGGFeatures(f, x): 
-	return 0
-	
 def normalizeImgForKeras(img):
 	return np.expand_dims(((img.astype(float) - 127.5) / 255), axis=0)
 
@@ -202,6 +198,7 @@ def QAPredictorModel():
 	return model
 
 ############################################ HEATMAP ################################################
+# https://github.com/jacobgil/keras-grad-cam
 	
 def target_category_loss(x, category_index, nb_classes):
     return tf.multiply(x, K.one_hot([category_index], nb_classes)) # tf.mul ? 
@@ -267,31 +264,7 @@ class Softmax4D(Layer):
 
     def get_output_shape_for(self, input_shape):
         return input_shape		
-		
-def QAPM_Heatmap():
-	############# ^ copy pasted from above, careful!!! ##############
-	img = Input(shape=(CAM_W, CAM_H, CAM_C), name='input_img_')
-	network = Convolution2D(CONV_0, 3, 3, activation='elu', border_mode='same', name='conv_0')(img)	
-	network = MaxPooling2D((2, 2), border_mode='same')(network) # out: 112 x 112 x 100
-	network = Convolution2D(CONV_1, 3, 3, activation='elu', border_mode='same', name='conv_1')(network)	
-	network = MaxPooling2D((2, 2), border_mode='same')(network) # out: 56 x 56 x 50
-	network = Convolution2D(CONV_2, 3, 3, activation='elu', border_mode='same', name='conv_2')(network)
-	network = MaxPooling2D((2, 2), border_mode='same')(network)	# out: 28 x 28 x 30
-	network = Convolution2D(CONV_3, 3, 3, activation='elu', border_mode='same', name='conv_last')(network) # out: 7 x 7 x 32 ( == 1568 numbers)	
-	network = MaxPooling2D((2, 2), border_mode='same')(network) # out: 14 x 14 x 20 ( == 3920 #s)
-	############# ^ copy pasted from above, careful!!! ############## in the future, make a heatmap branch from main model and share weights or something... 
-	network = Convolution2D(DENSE_1,7,7,activation="elu", border_mode='same', name="dense_1")(network)
-	network = Convolution2D(DENSE_2,1,1,activation="elu", border_mode='same', name="dense_2")(network)
-	network = Convolution2D(NUM_CLASSES,1,1, border_mode='same', name="dense_3")(network)
-	network = Softmax4D(axis=1,name="softmax")(network)
-	
-	model_inputs = img
-	model_outputs = network
-	model = Model(input=model_inputs, output=model_outputs)
-	
-	model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-	
-	return model
+
 	
 def raw_frame_to_vgg(x):
 	x = (x.astype(float) - 127.5) / 255 
