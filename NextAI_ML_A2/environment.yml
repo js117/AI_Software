@@ -1,0 +1,17 @@
+name: nextai
+channels:
+  - conda-forge
+dependencies:
+  - python=3.5.2
+  - keras
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - jupyter
+  - nbstripout
+  - seaborn
+  - tensorflow
+  - scikit-learn
+  - pip:
+    - scikit-optimize

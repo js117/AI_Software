@@ -3,6 +3,7 @@
 #		 - pip install --upgrade --ignore-installed tensorflow
 
 import h5py
+import time
 import numpy as np
 import tensorflow as tf
 from keras.preprocessing.image import ImageDataGenerator

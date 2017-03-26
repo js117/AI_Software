@@ -117,3 +117,88 @@ def CreateOutputVideo(img_tensor, output_file_name, output_frame_rate, w, h, do_
 		cv2.destroyAllWindows()
 		
 	return 	
+	
+####################################################################################################################################	
+################################################# V-Rep Simulation Specific ########################################################
+####################################################################################################################################	
+
+def GetFoldersForRuns():
+	folders = []
+	for x in os.listdir(os.getcwd()):
+		if x.startswith('u_sequence'):
+			folders.append(x)
+	
+	return folders
+	
+def LoadFramesActionsFromFolder(folder, CAM_W, CAM_H, CAM_C, ACTION_LEN):
+
+	curr_dir = os.getcwd()
+	search_dir = ""
+	if platform == "win32":
+		search_dir = os.getcwd()+"\\"+folder # WINDOWS
+	else:
+		search_dir = os.getcwd()+"/"+folder # LINUX
+	os.chdir(search_dir)
+	files = filter(os.path.isfile, os.listdir(search_dir))
+	files = [os.path.join(search_dir, f) for f in files] # add path to each file
+	files.sort(key=lambda x: x) #os.path.getmtime(x))
+	os.chdir(curr_dir)
+	
+	timesteps = int(len(files) / 2)
+	#print(len(files)); print(timesteps)
+	frames = np.zeros((timesteps, CAM_W, CAM_H, CAM_C), dtype=np.uint8)	# IMPORTANT!! Or else value copy fails.. 
+	actions = np.zeros((timesteps, ACTION_LEN)) # default float type should be fine
+	i1 = 0
+	i2 = 0
+	
+	for f in files:
+		if f.endswith('_x.npy'):		# frame
+			#print(f)
+			temp = np.load(f)
+			frames[i1,:,:,:] = temp[:,:,:]
+			i1 = i1 + 1
+		elif f.endswith('_u.npy'):		# action
+			#print(f)
+			actions[i2,:] = np.load(f).reshape(ACTION_LEN)
+			i2 = i2 + 1
+		else:
+			print("ERROR: found file in %s not ending with _x.npy or _u.npy"%folder)
+			print("File: %s"%f)
+			return
+			
+	frames = NormalizeImgTensor(frames) # normalize
+	
+	return frames, actions	
+	
+def GetFrame4(frame, isVertical): 
+### NOTE: imshow does weird things if input is float:
+# "If the image is 32-bit floating-point, the pixel values are multiplied by 255. That is, the value range [0,1] is mapped to [0,255]."
+
+	img1 = frame[:,:,0:3]
+	img2 = frame[:,:,3:6]
+	img3 = frame[:,:,6:9]
+	img4 = frame[:,:,9:12]
+	if (isVertical == 1):
+		img = np.concatenate((np.concatenate((img1, img2),axis=0), np.concatenate((img3, img4),axis=0)), axis=0)
+	else:
+		img = np.concatenate((np.concatenate((img1, img2),axis=1), np.concatenate((img3, img4),axis=1)), axis=0)
+	#cv2.imshow('image',img)
+	#cv2.waitKey(0)
+	return img
+	
+### TODO / under construction	
+def ViewFutureFrames(frames): # assumes frames of shape (NFF, CAM_W, CAM_H, CAM_C)
+	num_frames = frames.shape[0] #
+	
+	font = cv2.FONT_HERSHEY_SIMPLEX
+    #cv2.putText(img,'OpenCV',(10,500), font, 4,(255,255,255),2,cv2.LINE_AA)
+	
+	imgs = GetFrame4(frames[0,:], 1)
+	#cv2.putText(imgs,'OpenCV',(5,20), font, 1,(255,255,255),1,cv2.LINE_AA)
+	for t in range(1, num_frames):
+		next_img = GetFrame4(frames[t,:], 1)
+		#cv2.putText(next_img,'[0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75]',(5,10), font, 0.2,(20,255,20),1,cv2.LINE_AA)
+		#cv2.putText(next_img,'[0.11, 0.21, 0.31, 0.41, 0.51, 0.61, 0.71]',(5,25), font, 0.2,(255,20,20),1,cv2.LINE_AA)
+		imgs = np.concatenate((imgs, next_img), axis=1)
+		
+	return imgs

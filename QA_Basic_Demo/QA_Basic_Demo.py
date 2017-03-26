@@ -503,7 +503,7 @@ if __name__ == '__main__':
 	#TrainOnData(); sys.exit()
 	
 	########## Test out heatmap stuff: #########
-	X_train, Y_train, _, _ = GetTrainingData()
+	'''X_train, Y_train, _, _ = GetTrainingData()
 	print(X_train.shape); print(Y_train.shape)
 	
 	for image in X_train[30:40,:]:
@@ -513,7 +513,7 @@ if __name__ == '__main__':
 		cv2.imshow('asdf', np.concatenate((image,heatmap_img), axis=0))
 		cv2.waitKey(0)
 	
-	sys.exit()
+	sys.exit()'''
 	
 	
 	print("\n========== Welcome to the Big Solve Robotics QA Basic Demo ==========\n")
