@@ -130,7 +130,7 @@ def GetFoldersForRuns():
 	
 	return folders
 	
-def LoadFramesActionsFromFolder(folder, CAM_W, CAM_H, CAM_C, ACTION_LEN):
+def LoadFramesActionsFromFolder(folder, CAM_W, CAM_H, CAM_C, ACTION_LEN): # note: by CAM_C we mean 3 rgb channels x # of cameras (e.g. 3*4 = 12)
 
 	curr_dir = os.getcwd()
 	search_dir = ""
