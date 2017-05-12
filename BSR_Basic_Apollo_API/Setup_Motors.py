@@ -66,19 +66,19 @@ print("Assign each port to a motor, press the following if the current port corr
 print("(Press 'q' and 'w' to test a motor, and 'e' to enter its unique 2-character code to the config.)\n")
 print("\n APOLLO ACTUATOR NAMING GUIDE: \n")
 print("L1 - left base rotation\n")
-print("L2 - left base rotation\n")
-print("L3 - left base rotation\n")
-print("L4 - left base rotation\n")
-print("L5 - left base rotation\n")
-print("L6 - left base rotation\n")
-print("R1 - left base rotation\n")
-print("R2 - left base rotation\n")
-print("R3 - left base rotation\n")
-print("R4 - left base rotation\n")
-print("R5 - left base rotation\n")
-print("R6 - left base rotation\n")
-print("N1 - left base rotation\n")
-print("N2 - left base rotation\n")
+print("L2 - left shoulder pitch\n")
+print("L3 - left elbow pitch\n")
+print("L4 - left wrist pitch\n")
+print("L5 - left wrist roll\n")
+print("L6 - left gripper\n")
+print("L1 - right base rotation\n")
+print("L2 - right shoulder pitch\n")
+print("L3 - right elbow pitch\n")
+print("L4 - right wrist pitch\n")
+print("L5 - right wrist roll\n")
+print("L6 - right gripper\n")
+print("N1 - neck roll\n")
+print("N2 - neck pitch\n")
 print("\n==========================================================\n")
 ports = [str(p) for p in serial_ports()]
 print("--- Available ports: ---")
@@ -114,31 +114,31 @@ for port in ports:
 			if (n == '1'):
 				MOTOR_test.close() 
 				MOTOR_shoulder_yaw = serial.Serial(port, baudrate) 
-				print("Port "+port+" selected as base rotation joint\n"); break
+				print("Port "+port+" selected as right base rotation joint\n"); break
 			if (n == '2'):
 				MOTOR_test.close() 
 				MOTOR_shoulder_pitch = serial.Serial(port, baudrate) 
-				print("Port "+port+" selected as shoulder pitch joint\n"); break
+				print("Port "+port+" selected as right shoulder pitch joint\n"); break
 			if (n == '3'):
 				MOTOR_test.close() 
 				MOTOR_elbow_pitch = serial.Serial(port, baudrate) 
-				print("Port "+port+" selected as elbow joint\n"); break
+				print("Port "+port+" selected as right elbow joint\n"); break
 			if (n == '4'):
 				MOTOR_test.close() 
 				MOTOR_wrist_pitch = serial.Serial(port, baudrate) 
-				print("Port "+port+" selected as wrist pitch joint\n"); break
+				print("Port "+port+" selected as right wrist pitch joint\n"); break
 			if (n == '5'):
 				MOTOR_test.close() 
 				MOTOR_wrist_roll = serial.Serial(port, baudrate) 
-				print("Port "+port+" selected as wrist roll joint\n"); break
+				print("Port "+port+" selected as right wrist roll joint\n"); break
 			if (n == '6'):
 				MOTOR_test.close() 
 				MOTOR_gripper = serial.Serial(port, baudrate) 
-				print("Port "+port+" selected as gripper joint\n"); break
-			if (n == '7'):
-				MOTOR_test.close() 
-				MOTOR_left_shoulder_yaw = serial.Serial(port, baudrate) 
-				print("Port "+port+" selected as left base rotation joint\n"); break
+				print("Port "+port+" selected as right gripper joint\n"); break
+			#if (n == '7'):
+			#	MOTOR_test.close() 
+			#	MOTOR_left_shoulder_yaw = serial.Serial(port, baudrate) 
+			#	print("Port "+port+" selected as left base rotation joint\n"); break
 print("\nFinished configuring ports.\n")
 
 pygame.init() 	
@@ -250,7 +250,7 @@ while(True):
 	
 	
 	
-	
+################## STUFF DOWN HERE: NOT USED YET ####################	
 	
 	
 	
