@@ -50,11 +50,11 @@ def GetDataFromFolder(folder, do_normalize, w, h):
 	os.chdir(curr_dir)
 	
 	n = len(files)
-	imgs = np.zeros((n, w, h, 3), dtype=np.uint8)
+	imgs = np.zeros((n, h, w, 3), dtype=np.uint8)
 	
 	i = 0
 	for f in files:
-		img = cv2.resize(cv2.imread(f), (w, h))
+		img = cv2.imread(f) #cv2.resize(cv2.imread(f), (w, h))
 		imgs[i,:,:,:] = img
 		i = i + 1
 		
@@ -103,14 +103,15 @@ def CreateOutputVideo(img_tensor, output_file_name, output_frame_rate, w, h, do_
 	
 	print("Creating comparison video: ")
 	for i in range(0, num_frames):
-		img1 = image_tensor[i,:,:,:]
+		img1 = img_tensor[i,:,:,:]
 		vis = img1
 		cv2.imshow('video', vis)
 		cv2.waitKey(round(1000/output_frame_rate)) # play at approx. output_frame_rate
 		if (do_un_normalize == 1):
 			out.write(UnnormalizeImgTensor(vis)) # don't forget actual videos can't be b/w 0 and 1
 		else:
-			out.write((vis).astype(int)) # should work for UN-NORMALIZED frames
+			out.write(vis)
+			#out.write((vis).astype('u1')) # should work for UN-NORMALIZED frames
 		
 	out.release()
 	if play_vid == 1:

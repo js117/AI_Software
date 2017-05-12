@@ -1,0 +1,30 @@
+R4/COM7
+unknown/COM8
+L3/COM9
+unknown/COM10
+L4/COM11
+unknown/COM14
+unknown/COM15
+R1/COM16
+R6/COM17
+R5/COM18
+L1/COM19
+unknown/COM20
+
+-----
+
+R4/COM7
+unknown/COM8
+L3/COM9
+unknown/COM10
+L4/COM11
+unknown/COM14
+unknown/COM15
+R1/COM16
+R6/COM17
+R5/COM18
+L1/COM19			---> only 1 direction??
+L5/COM20			---> jumpy... 
+
+------
+
