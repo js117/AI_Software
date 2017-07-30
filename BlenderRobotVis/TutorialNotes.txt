@@ -1,0 +1,151 @@
+==================================
+===== BLENDER TUTORIAL NOTES =====
+==================================
+
+Mouse: PAN: SHIFT + MMB to pan (move) where MMB == middle mouse button
+       ZOOM: MMB scrool
+	   ROTATE: hold MMB, move mouse! 
+
+a, x, delete ---> delete all 
+
+View, View Persp/Ortho ---> change perspective 
+
+View, Front
+
+shift + s, r ---> cursor to center
+
+add, mesh, cylinder
+
+tab, z ---> edit mode, wireframe
+
+tab ---> go into/out of edit (object) mode
+
+a ---> de-select 	
+
+b ---> box select
+
+select top of e.g. cylinder object and drag cursor arrows if you want to shrink it. Select whole object, then cursor arrows move it. 
+
+z ---> go into/out of wireframe
+
+ctrl+b ---> bevel; careful what you select (use b, box-select, e.g. to grab the top of an object); rolling middle mouse wheel to "round"
+
+(Left toolbar) Shading/ UVs, Shading, Smooth
+
+(Right Panel) Modifiers (wrench-icon), add modifier, edge-split
+
+Add, mesh, cube
+
+s ---> size the object! Be mindful of where the pivot is, in edit vs. object mode
+s, {x, y, z} ---> size object in only the x, y, z plane! 
+
+Selecting in edit mode tips:
+"In Blender’s Edit mode, the cube changes color, and dots form at each of the cube’s corners. Each dot is a vertex. The line that forms between two vertices is an edge. A face in Blender is a polygon that has been formed by three or more connecting edges."
+OR
+
+Edit mode (z), x ---> better menu for selecting what to delete
+
+(With object selected) r,{x,y,z},{0-180} --> rotate object in x,y,z however many degrees! 
+
+(In wireframe) c ---> circle selection (really useful for vertices for example)
+
+(With e.g. vertices selected) e ---> extrude!!! 
+
+shift + alt + RMB ---> select a continuous group of edges + vertices (?)
+
+(With e.g. edges + vertices selected) f ---> create face
+
+(With object selected) h ---> hide object / alt + h ---> unhide
+
+(With object selected) ctrl + r, v, RMB ---> loop cut (?)
+
+(With a vertex/line selected) ctrl + l ---> select linked lines (?)
+
+shift + alt + RMB ---> LOOP SELECT
+
+(With face selected) i ---> inset
+
+(With object selected, in wireframe+edit modes) shift + d ---> duplicate
+
+(With object selected, in wireframe+edit modes) ctrl + n ---> make normals consistent
+
+(With edge loops selected, in edit mode) ctrl + e, Bridge edge loops ---> cool connecting of loops through extrusion
+
+(With object selected) g ---> to move/translate object around with mouse  
+
+Testing Rotation: 
+- Object mode
+- Select a link of robot arm
+- 3D cursor 
+- Click left on fixed rotation point (e.g. joint location)
+- Press R, move mouse
+
+Joining objects:
+- Select both objects
+- Ctrl + J
+- Remove faces that will be joined: select, press X, delete faces
+
+Parallel Gripper: (36:00 in vid 1)
+- add cube
+- add modifier to cube: mirror
+- select eye-dropper icon, click on stationary part of hand
+- choose right axis (e.g. z)
+
+------------------------
+--- Part II: Rigging ---
+------------------------
+
+Add, Armature, Single Bone
+
+(With bone selected) (Right-hand panel) Man icon, Display, B-Bone (can put on X-Ray too)
+
+(With bone selected; edit mode) Ctrl + Alt + S, change size 
+
+Select the tip of the B-Bone, press E, extrude to next part of armature
+
+(In Object mode) Select bones, press M, move to bottom layer
+[Can use layer menu, on bottom, to make layers visible or not]
+
+Aligning bone tip to object: shift + s + 'selection to cursor' (after placing cursor on center of requested object)
+
+Methodology: keep extending bone along links into joints
+
+-----------------------------
+--- Part III: Constraints ---
+-----------------------------
+
+- Pose Mode ---> Select bone, go to 'Bone Constraints' option on right hand panel (bone)
+
+- Add Bone Constraint ---> Limit Rotation
+
+- Edit Mode ---> go to 'Data' option on right hand panel (little man) ---> Enable axes, names
+
+- 'Constraints' tab on right hand panel ---> select all bones ('a') ---> Ctrl+N, 'Global +Z Axis'
+
+- Pose Mode ---> select bone ---> go back to 'Bone Constraints' tab
+	* Convert: world/local space
+	* Limit X/Y/Z as appropriate (can even limit your actual axis, put in the numerical angle constraints)
+	* For transform (check)
+	* Should be able to grab and rotate now
+	** With bone selected, press 'r', and you can rotate in the enabled axis (or axes)!
+	
+- Put everything back in place: select everything 'a', ALT + G, ALT + R
+
+- Making a line of bones straight: select them, S + Z + 0 (zero)
+
+- Use: Add Bone Constraint ---> Limit Location for linear actuation (also add a limit rotation on all axes to not rotate by accident)
+	** With bone selected, press 'g' to move (linearly)
+	
+- Parent to the Armature:
+	* Go to Object Mode
+	* First, join relevant parts of the model together (e.g. into links) by selecting multiple pieces, hitting CTRL + J
+	
+	* Go to Pose Mode
+	* Select link, shift + LMB to select corresponding bone, CTRL + P, 'Set Parent to Bone' (now they rotate together!!)
+	
+	* Can re-parent bones done incorrectly in edit mode. On right side, find the bone icon, scroll down to 'Parent:'
+	
+- CAD MESH TO PARTS:
+	* Select a bunch of faces in edit mode of the portion you want to turn into a discrete part
+	* P > Separate Selection
+	* BAM!
