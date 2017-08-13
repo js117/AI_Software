@@ -124,3 +124,31 @@ void loop() {
 }
 
 
+/*
+// Below: variables and functions for controlling lower-end microsteppers based on simple (step, dir) 2 pin setup. 
+//int pulseWidthMicros = 20;  // microseconds
+unsigned long D7_millisBetweenSteps = 25; 
+unsigned long D8_millisBetweenSteps = 25; 
+// ^ Inverse speed; RPM calculation: 60000/(numSteps*millisBwSteps), e.g. 25ms/step --> RPM = 
+unsigned long D7_prevStepMillis = 0;
+unsigned long D8_prevStepMillis = 0;
+
+void D7_singleStep(int dir) {  // dir == { HIGH, LOW }
+ digitalWrite(D7_Dr, dir); 
+ if (curMillis - D7_prevStepMillis >= D7_millisBetweenSteps) {
+ D7_prevStepMillis += D7_millisBetweenSteps;
+ digitalWrite(D7_Sp, HIGH);
+ digitalWrite(D7_Sp, LOW);
+ }
+}
+
+void D8_singleStep(int dir) {  // dir == { HIGH, LOW }
+ digitalWrite(D8_Dr, dir); 
+ if (curMillis - D8_prevStepMillis >= D8_millisBetweenSteps) {
+ D8_prevStepMillis += D8_millisBetweenSteps;
+ digitalWrite(D8_Sp, HIGH);
+ digitalWrite(D8_Sp, LOW);
+ }
+}
+*/
+
