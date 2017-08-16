@@ -71,15 +71,15 @@ const int D6_Dm = 21;
 int D6_Dir = 1;
 // Driver 7: Low-end/basic Microstepper
 const int D7_Pp = 22; const int J7stepPin = D7_Pp;
-//const int D7_Pm = 24;
+const int D7_Pm = 24;
 const int D7_Dp = 26; const int J7dirPin = D7_Dp; 
-//const int D7_Dm = 28;
+const int D7_Dm = 28;
 int D7_Dir = 1;
 // Driver 8: Low-end/basic Microstepper
 const int D8_Pp = 30; const int J8stepPin = D8_Pp;
-//const int D8_Pm = 32;
+const int D8_Pm = 32;
 const int D8_Dp = 34; const int J8dirPin = D8_Dp; 
-//const int D8_Dm = 36;
+const int D8_Dm = 36;
 int D8_Dir = 1;
 
 
@@ -88,14 +88,14 @@ int D8_Dir = 1;
 #define SPEED_CHANGE 10 // incremental number to change SPEED
 #define SPEED_MAX 2510 // max RPMs for stepper
 const int PulseWidth = 10;
-int motorSpeed1 = 200; // initialize the motor speed
-int motorSpeed2 = 200; // initialize the motor speed
-int motorSpeed3 = 200; // initialize the motor speed
-int motorSpeed4 = 200; // initialize the motor speed
-int motorSpeed5 = 200; // initialize the motor speed
-int motorSpeed6 = 200; // initialize the motor speed
-int motorSpeed7 = 200; // need to normalize to milliesBetweenSteps variables below
-int motorSpeed8 = 200; // need to normalize to milliesBetweenSteps variables below
+int motorSpeed1 = 400; // initialize the motor speed
+int motorSpeed2 = 400; // initialize the motor speed
+int motorSpeed3 = 400; // initialize the motor speed
+int motorSpeed4 = 400; // initialize the motor speed
+int motorSpeed5 = 400; // initialize the motor speed
+int motorSpeed6 = 400; // initialize the motor speed
+int motorSpeed7 = 400; // need to normalize to milliesBetweenSteps variables below
+int motorSpeed8 = 400; // need to normalize to milliesBetweenSteps variables below
 int stepsPerRevolution1 = 200;
 int stepsPerRevolution2 = 200;
 int stepsPerRevolution3 = 200;
@@ -127,8 +127,8 @@ Stepper D3_Stepper(stepsPerRevolution3, D3_Dp, D3_Dm, D3_Pp, D3_Pm);
 Stepper D4_Stepper(stepsPerRevolution4, D4_Dp, D4_Dm, D4_Pp, D4_Pm); 
 Stepper D5_Stepper(stepsPerRevolution5, D5_Dp, D5_Dm, D5_Pp, D5_Pm); 
 Stepper D6_Stepper(stepsPerRevolution6, D6_Dp, D6_Dm, D6_Pp, D6_Pm); 
-Stepper D7_Stepper(stepsPerRevolution7, D7_Dp, D7_Pp); 
-Stepper D8_Stepper(stepsPerRevolution8, D8_Dp, D8_Pp); 
+Stepper D7_Stepper(stepsPerRevolution7, D7_Dp, D7_Dm, D7_Pp, D7_Pm); 
+Stepper D8_Stepper(stepsPerRevolution8, D8_Dp, D8_Dm, D8_Pp, D8_Pm); 
 
 void setup() {
   // put your setup code here, to run once:
@@ -165,14 +165,14 @@ void setup() {
   pinMode(D6_Dm, OUTPUT);
   //
   pinMode(D7_Pp, OUTPUT);
-  //pinMode(D7_Pm, OUTPUT);
+  pinMode(D7_Pm, OUTPUT);
   pinMode(D7_Dp, OUTPUT);
-  //pinMode(D7_Dm, OUTPUT);
+  pinMode(D7_Dm, OUTPUT);
   //
   pinMode(D8_Pp, OUTPUT);
-  //pinMode(D8_Pm, OUTPUT);
+  pinMode(D8_Pm, OUTPUT);
   pinMode(D8_Dp, OUTPUT);
-  //pinMode(D8_Dm, OUTPUT);
+  pinMode(D8_Dm, OUTPUT);
   //
 
   // Do we need to explicitly set pinmodes? Other version on Arduino Uno didn't. 
@@ -592,6 +592,7 @@ void loop() {
         } else if (J8dir == -1) {
           digitalWrite(J8dirPin, LOW);
         }
+        delayMicroseconds(PulseWidth);
         
         ////////////////////// PRINT VARIABLES /////////////////////
         int print_debug = 0;
@@ -635,7 +636,7 @@ void loop() {
 
         }
         //DRIVE MOTORS
-        while (J1done < J1step || J2done < J2step || J3done < J3step || J4done < J4step || J5done < J5step || J6done < J6step)
+        while (J1done < J1step || J2done < J2step || J3done < J3step || J4done < J4step || J5done < J5step || J6done < J6step || J7done < J7step || J8done < J8step)
         {
 
           curr_time_stamp = micros(); 
@@ -669,7 +670,7 @@ void loop() {
           }
           //
           if (J7done < J7step && J7skipCur == 0 && (curr_time_stamp - last_time_stamp_7 >= stepDelay7 - minDelay)) {
-            digitalWrite(J7stepPin, HIGH);
+            digitalWrite(J7stepPin, HIGH); 
             last_time_stamp_7 = curr_time_stamp; 
           }
           if (J8done < J8step && J8skipCur == 0 && (curr_time_stamp - last_time_stamp_8 >= stepDelay8 - minDelay)) {
@@ -680,7 +681,29 @@ void loop() {
           ////////////////////// TODO: figure out how they're setting speeds, counting steps until finished. Modify for our stepper lib.
           
           //#############DELAY AND SET LOW
-          delayMicroseconds(PulseWidth); // I think this has to do with minimum pulse width the driver needs. 
+          delayMicroseconds(PulseWidth); // Minimum pulse width the driver needs. 
+          
+          digitalWrite(J1stepPin, LOW);
+          J1done = ++J1done;
+          digitalWrite(J2stepPin, LOW);
+          J2done = ++J2done;
+          digitalWrite(J3stepPin, LOW);
+          J3done = ++J3done;
+          digitalWrite(J4stepPin, LOW);
+          J4done = ++J4done;
+          digitalWrite(J5stepPin, LOW);
+          J5done = ++J5done;
+          digitalWrite(J6stepPin, LOW);
+          J6done = ++J6done;
+          digitalWrite(J7stepPin, LOW);
+          J7done = ++J7done;
+          digitalWrite(J8stepPin, LOW);
+          J8done = ++J8done;
+          
+          // DELAY FOR SPEEEEED SETTINGS
+          delayMicroseconds(minDelay); 
+          
+          /*
           if (J1done < J1step && J1skipCur == 0) {
             digitalWrite(J1stepPin, LOW);
             J1done = ++J1done;
@@ -706,7 +729,7 @@ void loop() {
             J6done = ++J6done;
           }
           if (J7done < J7step && J7skipCur == 0) {
-            digitalWrite(J7stepPin, LOW);
+            digitalWrite(J7stepPin, LOW); Serial.print("yeah buddy");
             J7done = ++J7done;
           }
           if (J8done < J8step && J8skipCur == 0) {
@@ -750,6 +773,7 @@ void loop() {
           if (J8skipCur == J8skip) {
             J8skipCur = 0;
           }
+          */
         }
         
         
