@@ -9,7 +9,7 @@ import tensorflow as tf
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Input, Convolution2D, UpSampling2D, MaxPooling2D, ZeroPadding2D, Reshape, merge
-from keras.layers import Activation, Dropout, Flatten, Dense
+from keras.layers import Activation, Dropout, Flatten, Dense, Merge
 from keras.utils.np_utils import to_categorical
 from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras.optimizers import RMSprop, SGD
@@ -19,7 +19,7 @@ from keras.applications.vgg16 import preprocess_input
 from keras.models import Model
 from keras.models import load_model
 from keras import backend as K
-from keras.layers.core import Lambda, Merge
+from keras.layers.core import Lambda
 from keras.engine import Layer
 
 # Choose an output layer, e.g. 'block3_pool'

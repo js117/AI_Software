@@ -19,7 +19,7 @@ import tensorflow as tf
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Input, Convolution2D, UpSampling2D, MaxPooling2D, ZeroPadding2D, Reshape, merge
-from keras.layers import Activation, Dropout, Flatten, Dense
+from keras.layers import Activation, Dropout, Flatten, Dense, Merge
 from keras.utils.np_utils import to_categorical
 from keras.callbacks import ModelCheckpoint, TensorBoard
 from keras.optimizers import RMSprop, SGD
@@ -29,7 +29,7 @@ from keras.applications.vgg16 import preprocess_input
 from keras.models import Model
 from keras.models import load_model
 from keras import backend as K
-from keras.layers.core import Lambda, Merge
+from keras.layers.core import Lambda
 from keras.engine import Layer
 
 '''
@@ -221,7 +221,7 @@ model_outputs = [Out_C4]
 # Out_C4: [W, H, 3*NUM_CAMS*NUM_FUTURE_FRAMES], e.g. [1, 128, 128, 120]
 UDM_model = Model(input=model_inputs, output=model_outputs)
 
-UDM_optimizer = RMSprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.0)
+UDM_optimizer = RMSprop(lr=0.0001, rho=0.9, epsilon=1e-08, decay=0.0)
 UDM_model.compile(loss='binary_crossentropy', optimizer=UDM_optimizer) 
 # ^ TODO: custom loss function more appropriate for sequence of similar images...   
 
