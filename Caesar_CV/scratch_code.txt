@@ -1,0 +1,94 @@
+'''
+def main():
+    def callback(frame, depth, fps):
+        # Normalize the depth for representation
+        min, max = depth.min(), depth.max()
+        depth = np.uint8(255 * (depth - min) / (max - min))
+
+        # Unable to retrieve correct frame, it's still depth here
+        put_text(frame, "{1}x{0}".format(*frame.shape), Gravity.TOP_LEFT)
+        put_text(depth, "{1}x{0}".format(*depth.shape), Gravity.TOP_LEFT)
+
+        put_text(depth, "%.1f" % fps, Gravity.TOP_RIGHT)
+
+        cv2.imshow('frame', frame)
+        cv2.imshow('depth', depth)
+
+    with Camera(cv2.CAP_OPENNI2) as cam:
+        print("Camera: %dx%d, %d" % (
+            cam.get(cv2.CAP_OPENNI_IMAGE_GENERATOR + cv2.CAP_PROP_FRAME_WIDTH),
+            cam.get(cv2.CAP_OPENNI_IMAGE_GENERATOR + cv2.CAP_PROP_FRAME_HEIGHT),
+            cam.get(cv2.CAP_OPENNI_IMAGE_GENERATOR + cv2.CAP_PROP_FPS)))
+        cam.capture(callback, False)
+
+    cv2.destroyAllWindows()
+
+
+if __name__ == '__main__':
+    main()
+
+
+# Using Kinect and other OpenNI compatible depth sensors:
+#   http://docs.opencv.org/master/d7/d6f/tutorial_kinect_openni.html
+# OpenCV Python unable to access correct OpenNI device channels:
+#   https://github.com/opencv/opencv/issues/4735
+'''
+
+''' 
+# Using pre-made CV features to do template matching
+kp2, des2 = orb_features.detectAndCompute(c_frame_ds,None) 
+		
+		i = 1
+		#for i in range(0,1): 
+		kp1 = QR_code_kps[i] 
+		des1 = QR_code_des[i]
+		
+		matches = bf_matcher.knnMatch(des1,des2,k=2)
+
+		# Apply ratio test
+		good = []
+		for m,n in matches:
+			if m.distance < 0.81*n.distance:
+				good.append([m])
+'''
+#img3 = cv2.drawMatchesKnn(QR_code_imgs[i],kp1,c_frame_ds,kp2,matches,None,**draw_params)
+#img3 = cv2.drawMatchesKnn(QR_code_imgs[i],kp1,c_frame_ds,kp2,good,flags=2,outImg=None)
+'''
+##################################### SETUP ######################################
+
+
+sift_features = cv2.xfeatures2d.SIFT_create()
+orb_features = cv2.ORB_create(nfeatures=250) # SPEED PERFORMANCE: 2.5x faster than SIFT
+# http://docs.opencv.org/3.0-beta/modules/features2d/doc/feature_detection_and_description.html#orb-orb
+# SIFT rotation invariance explained, once and for all: 
+'''
+Rotation dependence The feature vector uses gradient orientations. Clearly, if you rotate the image, 
+everything changes. All gradient orientations also change. To achieve rotation independence, the keypoint's
+rotation is subtracted from each orientation. Thus each gradient orientation is relative to the keypoint's
+ orientation. [that was bothering me]
+ ''' 
+cv2.ocl.setUseOpenCL(False) # Apparently this is needed to fix ORB and FLANN problems in OpenCV... 
+QR_code_folder = "QR_codes"
+QR_code_names = []
+QR_code_imgs = []
+QR_code_kps = []
+QR_code_des = []
+NUM_QR_CODES = 0
+
+bf_matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
+
+
+print("Initializing QR codes...\n")
+QR_folder_fullpath = os.getcwd()+"/"+QR_code_folder
+for filename in os.listdir(QR_folder_fullpath):
+	filepath = QR_folder_fullpath+"\\"+filename
+	print(filepath)
+	img = cv2.imread(filepath, 0)
+	#img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+	kp, des = orb_features.detectAndCompute(img,None)
+	QR_code_names.append(filename)
+	QR_code_imgs.append(img)
+	QR_code_kps.append(kp)
+	QR_code_des.append(des)
+	NUM_QR_CODES = NUM_QR_CODES + 1
+'''
