@@ -28,6 +28,7 @@ global RobotJointSpeeds
 global JointMinSpeed
 global JointMaxSpeed
 global NumStepsPerPress
+global CustomCommandString
 # Joint Name/Description by array index:		
 # 0 - Base Rotation	
 # 1 - Shoulder Pitch	
@@ -45,6 +46,7 @@ RobotJointSpeeds = [100, 100, 100, 100, 100, 100, 100, 100]
 JointMinSpeed = 10
 JointMaxSpeed = 2500
 NumStepsPerPress = 100
+CustomCommandString = ""
 
 #########################################################################################
 
@@ -75,6 +77,124 @@ def serial_ports():
         except (OSError, serial.SerialException):
             pass
     return result
+	
+def tryIndex(inData, char):
+	res = 0
+	try:
+		res = inData.index(char)
+	except:
+		pass
+	return res
+	
+def trySubString(inData, p1, p2):
+	res = ""
+	try:
+		res = inData[p1 : p2]
+	except:
+		pass
+	return res
+	
+# PRECONDITION: movement command string must specify all 8, even if no motion, i.e. zero steps. Example:
+# inData = "MJA00B00C00D00E17864F00G00H00"	
+def ReverseCustomMoveCommand(inData, debug_mode=0):
+	
+	J1start = tryIndex(inData, 'A') #inData.index('A');
+	J2start = tryIndex(inData, 'B') #inData.index('B');
+	J3start = tryIndex(inData, 'C') #inData.index('C');
+	J4start = tryIndex(inData, 'D') #inData.index('D');
+	J5start = tryIndex(inData, 'E') #inData.index('E');
+	J6start = tryIndex(inData, 'F') #inData.index('F');
+	J7start = tryIndex(inData, 'G') #inData.index('G');
+	J8start = tryIndex(inData, 'H') #inData.index('H');
+	
+	if debug_mode == 1:
+		print("Received starts: ")
+		print(J1start); print(J2start); print(J3start); print(J4start); 
+		print(J5start); print(J6start); print(J7start); print(J8start); 
+	
+	J1dir = int(trySubString(inData, J1start + 1, J1start + 2))
+	J2dir = int(trySubString(inData, J2start + 1, J2start + 2))
+	J3dir = int(trySubString(inData, J3start + 1, J3start + 2))
+	J4dir = int(trySubString(inData, J4start + 1, J4start + 2))
+	J5dir = int(trySubString(inData, J5start + 1, J5start + 2))
+	J6dir = int(trySubString(inData, J6start + 1, J6start + 2))
+	J7dir = int(trySubString(inData, J7start + 1, J7start + 2))
+	J8dir = int(trySubString(inData, J8start + 1, J8start + 2))
+	
+	if debug_mode == 1:
+		print("Received dirs: ")
+		print(J1dir); print(J2dir); print(J3dir); print(J4dir); 
+		print(J5dir); print(J6dir); print(J7dir); print(J8dir); 
+	
+	J1step = int(trySubString(inData, J1start + 2, J2start))
+	J2step = int(trySubString(inData, J2start + 2, J3start))
+	J3step = int(trySubString(inData, J3start + 2, J4start))
+	J4step = int(trySubString(inData, J4start + 2, J5start))
+	J5step = int(trySubString(inData, J5start + 2, J6start))
+	J6step = int(trySubString(inData, J6start + 2, J7start))
+	J7step = int(trySubString(inData, J7start + 2, J8start))
+	J8step = int(trySubString(inData, J8start + 2, len(inData)))
+	
+	if debug_mode == 1:
+		print("Received steps: ")
+		print(J1step); print(J2step); print(J3step); print(J4step); 
+		print(J5step); print(J6step); print(J7step); print(J8step); 
+		
+	if J1dir == 1:
+		J1dir = 0
+	elif J1dir == 0:
+		J1dir = 1
+	if J2dir == 1:
+		J2dir = 0
+	elif J2dir == 0:
+		J2dir = 1
+	if J3dir == 1:
+		J3dir = 0
+	elif J3dir == 0:
+		J3dir = 1
+	if J4dir == 1:
+		J4dir = 0
+	elif J4dir == 0:
+		J4dir = 1
+	if J5dir == 1:
+		J5dir = 0
+	elif J5dir == 0:
+		J5dir = 1
+	if J6dir == 1:
+		J6dir = 0
+	elif J6dir == 0:
+		J6dir = 1
+	if J7dir == 1:
+		J7dir = 0
+	elif J7dir == 0:
+		J7dir = 1
+	if J8dir == 1:
+		J8dir = 0
+	elif J8dir == 0:
+		J8dir = 1
+		
+	reverse_cmd = "MJ"
+	reverse_cmd = reverse_cmd + "A" + str(J1dir) + str(J1step)
+	reverse_cmd = reverse_cmd + "B" + str(J2dir) + str(J2step)
+	reverse_cmd = reverse_cmd + "C" + str(J3dir) + str(J3step)
+	reverse_cmd = reverse_cmd + "D" + str(J4dir) + str(J4step)
+	reverse_cmd = reverse_cmd + "E" + str(J5dir) + str(J5step)
+	reverse_cmd = reverse_cmd + "F" + str(J6dir) + str(J6step)
+	reverse_cmd = reverse_cmd + "G" + str(J7dir) + str(J7step)
+	reverse_cmd = reverse_cmd + "H" + str(J8dir) + str(J8step)
+	
+	if debug_mode == 1:
+		print("Original command: ")
+		print(inData)
+		print("Reverse command: ")
+		print(reverse_cmd)
+	
+	return reverse_cmd
+	
+#inData1 = "MJA01000B12000C03000D14000E05000F16000G17000H18000"	
+#inData2 = "MJA00B00C00D00E17864F00G00H00"
+#ReverseCustomMoveCommand(inData2, debug_mode=1)
+#sys.exit()
 
 ports = serial_ports()
 print(ports)
@@ -167,7 +287,7 @@ while True:
 		t2 = time.time()*1000 - t1
 		#print(t2)
 		if (VIEW_MODE == VIEW_MODE_RGB):
-			cv2.imshow("cam",c_frame_ds)
+			cv2.imshow("cam",c_frame)
 		elif (VIEW_MODE == VIEW_MODE_DEPTH):
 			cv2.imshow("cam",d_frame)
 		elif (VIEW_MODE == VIEW_MODE_IR):
@@ -195,7 +315,7 @@ while True:
 				print("Error: view mode undefined: " + str(VIEW_MODE))
 				break
 
-		if wait_key == ord('s'):
+		if wait_key == ord('c'):	# CAPTURE IMAGE
 			timestamp = str(time.time()).replace(".","")
 			img_name = timestamp+'.jpg'
 			print("\nSaving image: "+img_name)
@@ -245,4 +365,58 @@ while True:
 			print(cmd_str)
 			RobotSerialController.write(cmd_str)
 			print("Manual control - move BACKWARD \n")
+			
+		if wait_key == ord('a'):
+			newSpeed = RobotJointSpeeds[RobotCurrentJoint] + 10
+			if newSpeed >= JointMaxSpeed:
+				newSpeed = JointMaxSpeed
+			RobotJointSpeeds[RobotCurrentJoint] = newSpeed
+			cmd_str = "SS"+chr(65+RobotCurrentJoint)+str(newSpeed)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			print(cmd_str)
+			RobotSerialController.write(cmd_str)
+			print("Increase speed of joint: " + str(RobotCurrentJoint+1) + " to: " + str(newSpeed) + " \n")	
+			
+		if wait_key == ord('s'):
+			newSpeed = RobotJointSpeeds[RobotCurrentJoint] - 10
+			if newSpeed <= JointMinSpeed:
+				newSpeed = JointMinSpeed
+			RobotJointSpeeds[RobotCurrentJoint] = newSpeed
+			cmd_str = "SS"+chr(65+RobotCurrentJoint)+str(newSpeed)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			print(cmd_str)
+			RobotSerialController.write(cmd_str)
+			print("Increase speed of joint: " + str(RobotCurrentJoint+1) + " to: " + str(newSpeed) + " \n")		
+			
+		if wait_key == ord('d'):
+			NumStepsPerPress = NumStepsPerPress + 5
+			print("Increase NumStepsPerPress to: "+str(NumStepsPerPress)+" \n")	
+			
+		if wait_key == ord('f'):
+			NumStepsPerPress = NumStepsPerPress - 5
+			if NumStepsPerPress <= 10:
+				NumStepsPerPress = 10
+			print("Decrease NumStepsPerPress to: "+str(NumStepsPerPress)+" \n")	
+			
+		############## CURRENT TODO: FIX CUSTOM COMMANDS BELOW ####################	
+			
+		if wait_key == ord('e'):	# ENTER CUSTOM COMMAND STRING
+			cmd_str = input("Enter your custom command string and press enter: ")
+			CustomCommandString = cmd_str
+			cmd_str = cmd_str + "\n"
+			cmd_str = cmd_str.encode('utf-8')
+			print(cmd_str)
+			RobotSerialController.write(cmd_str)
+			print("^ Running this custom command string. Press 'R' to reverse.")
+			
+		if wait_key == ord('r'):	# REVERSE THE LAST CUSTOM COMMAND STRING
+			cmd_str = ReverseCustomMoveCommand(CustomCommandString, debug_mode=1) # argument will hold the last custom command, by above logic. 
+			# For now we are assuming speeds have been kept constant between the initial cmd and calling its reverse (does this matter for position?)
+			CustomCommandString = cmd_str # for easy testing, allow us to keep reversing back and forth between 2 workspace positions
+			cmd_str = cmd_str + "\n"
+			cmd_str = cmd_str.encode('utf-8')
+			print(cmd_str)
+			RobotSerialController.write(cmd_str)
+			print("^ Running this custom command string. Press 'R' to reverse.")
+			
+			
+			
 
