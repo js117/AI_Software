@@ -98,6 +98,10 @@ def trySubString(inData, p1, p2):
 # inData = "MJA00B00C00D00E17864F00G00H00"	
 def ReverseCustomMoveCommand(inData, debug_mode=0):
 	
+	motion_mode = 0
+	if "Z1" in inData: 
+		motion_mode = 1
+	
 	J1start = tryIndex(inData, 'A') #inData.index('A');
 	J2start = tryIndex(inData, 'B') #inData.index('B');
 	J3start = tryIndex(inData, 'C') #inData.index('C');
@@ -173,7 +177,9 @@ def ReverseCustomMoveCommand(inData, debug_mode=0):
 	elif J8dir == 0:
 		J8dir = 1
 		
-	reverse_cmd = "MJ"
+	reverse_cmd = "MJ"; 
+	if motion_mode == 1:
+		reverse_cmd = reverse_cmd + "Z1"
 	reverse_cmd = reverse_cmd + "A" + str(J1dir) + str(J1step)
 	reverse_cmd = reverse_cmd + "B" + str(J2dir) + str(J2step)
 	reverse_cmd = reverse_cmd + "C" + str(J3dir) + str(J3step)

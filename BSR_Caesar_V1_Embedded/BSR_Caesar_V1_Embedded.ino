@@ -88,36 +88,36 @@ int D8_Dir = 1;
 #define SPEED_CHANGE 10 // incremental number to change SPEED
 #define SPEED_MAX 2510 // max RPMs for stepper
 const int PulseWidth = 10;
-int motorSpeed1 = 400; // initialize the motor speed
-int motorSpeed2 = 400; // initialize the motor speed
-int motorSpeed3 = 400; // initialize the motor speed
-int motorSpeed4 = 400; // initialize the motor speed
-int motorSpeed5 = 400; // initialize the motor speed
-int motorSpeed6 = 400; // initialize the motor speed
-int motorSpeed7 = 400; // need to normalize to milliesBetweenSteps variables below
-int motorSpeed8 = 400; // need to normalize to milliesBetweenSteps variables below
-int stepsPerRevolution1 = 200;
-int stepsPerRevolution2 = 200;
-int stepsPerRevolution3 = 200;
-int stepsPerRevolution4 = 200;
-int stepsPerRevolution5 = 200;
-int stepsPerRevolution6 = 200;
-int stepsPerRevolution7 = 200;
-int stepsPerRevolution8 = 200;
+float motorSpeed1 = 400.0; // initialize the motor speed
+float motorSpeed2 = 400.0; // initialize the motor speed
+float motorSpeed3 = 400.0; // initialize the motor speed
+float motorSpeed4 = 400.0; // initialize the motor speed
+float motorSpeed5 = 400.0; // initialize the motor speed
+float motorSpeed6 = 400.0; // initialize the motor speed
+float motorSpeed7 = 400.0; // need to normalize to milliesBetweenSteps variables below
+float motorSpeed8 = 400.0; // need to normalize to milliesBetweenSteps variables below
+float stepsPerRevolution1 = 200.0;
+float stepsPerRevolution2 = 200.0;
+float stepsPerRevolution3 = 200.0;
+float stepsPerRevolution4 = 200.0;
+float stepsPerRevolution5 = 200.0;
+float stepsPerRevolution6 = 200.0;
+float stepsPerRevolution7 = 200.0;
+float stepsPerRevolution8 = 200.0;
 
 // TODO: delays in timing for the different motors. 
 // Basically instead of using num_steps 
 // Default value: delay value for 1 whole revolution (200 steps). 
 // Need to update dynamically when receiving new commands. Update both the steps, and speed.
 // Meant for delayMicros()
-long stepDelay1 = 60L * 1000L / stepsPerRevolution1 * 1000 / motorSpeed1;
-long stepDelay2 = 60L * 1000L / stepsPerRevolution2 * 1000 / motorSpeed2;
-long stepDelay3 = 60L * 1000L / stepsPerRevolution3 * 1000 / motorSpeed3;
-long stepDelay4 = 60L * 1000L / stepsPerRevolution4 * 1000 / motorSpeed4;
-long stepDelay5 = 60L * 1000L / stepsPerRevolution5 * 1000 / motorSpeed5;
-long stepDelay6 = 60L * 1000L / stepsPerRevolution6 * 1000 / motorSpeed6;
-long stepDelay7 = 60L * 1000L / stepsPerRevolution7 * 1000 / motorSpeed7;
-long stepDelay8 = 60L * 1000L / stepsPerRevolution8 * 1000 / motorSpeed8;
+float stepDelay1 = 60.0 * 1000.0 / stepsPerRevolution1 * 1000.0 / motorSpeed1;
+float stepDelay2 = 60.0 * 1000.0 / stepsPerRevolution2 * 1000.0 / motorSpeed2;
+float stepDelay3 = 60.0 * 1000.0 / stepsPerRevolution3 * 1000.0 / motorSpeed3;
+float stepDelay4 = 60.0 * 1000.0 / stepsPerRevolution4 * 1000.0 / motorSpeed4;
+float stepDelay5 = 60.0 * 1000.0 / stepsPerRevolution5 * 1000.0 / motorSpeed5;
+float stepDelay6 = 60.0 * 1000.0 / stepsPerRevolution6 * 1000.0 / motorSpeed6;
+float stepDelay7 = 60.0 * 1000.0 / stepsPerRevolution7 * 1000.0 / motorSpeed7;
+float stepDelay8 = 60.0 * 1000.0 / stepsPerRevolution8 * 1000.0 / motorSpeed8;
 
 // NOTE: stepper library works with any digital PWM pins. Just make sure the order is: 
 // (.., DIR+, DIR-, PUL+, PUL-) with the motor driver.
@@ -407,6 +407,33 @@ void loop() {
             D8_Stepper.setSpeed(motorSpeed8);
             Serial.print("Set driver 8 to speed: "); Serial.println(motorSpeed8);
         }
+
+        // Update step delays: 
+        stepDelay1 = 60.0 * 1000.0 / stepsPerRevolution1 * 1000.0 / motorSpeed1;
+        stepDelay2 = 60.0 * 1000.0 / stepsPerRevolution2 * 1000.0 / motorSpeed2;
+        stepDelay3 = 60.0 * 1000.0 / stepsPerRevolution3 * 1000.0 / motorSpeed3;
+        stepDelay4 = 60.0 * 1000.0 / stepsPerRevolution4 * 1000.0 / motorSpeed4;
+        stepDelay5 = 60.0 * 1000.0 / stepsPerRevolution5 * 1000.0 / motorSpeed5;
+        stepDelay6 = 60.0 * 1000.0 / stepsPerRevolution6 * 1000.0 / motorSpeed6;
+        stepDelay7 = 60.0 * 1000.0 / stepsPerRevolution7 * 1000.0 / motorSpeed7;
+        stepDelay8 = 60.0 * 1000.0 / stepsPerRevolution8 * 1000.0 / motorSpeed8;
+        
+        Serial.print("motorSpeed1: "); Serial.println(motorSpeed1);
+        Serial.print("motorSpeed2: "); Serial.println(motorSpeed2);
+        Serial.print("motorSpeed3: "); Serial.println(motorSpeed3);
+        Serial.print("motorSpeed4: "); Serial.println(motorSpeed4);
+        Serial.print("motorSpeed5: "); Serial.println(motorSpeed5);
+        Serial.print("motorSpeed6: "); Serial.println(motorSpeed6);
+        Serial.print("motorSpeed7: "); Serial.println(motorSpeed7);
+        Serial.print("motorSpeed8: "); Serial.println(motorSpeed8);
+        Serial.print("stepDelay1: "); Serial.println(stepDelay1);
+        Serial.print("stepDelay2: "); Serial.println(stepDelay2);
+        Serial.print("stepDelay3: "); Serial.println(stepDelay3);
+        Serial.print("stepDelay4: "); Serial.println(stepDelay4);
+        Serial.print("stepDelay5: "); Serial.println(stepDelay5);
+        Serial.print("stepDelay6: "); Serial.println(stepDelay6);
+        Serial.print("stepDelay7: "); Serial.println(stepDelay7);
+        Serial.print("stepDelay8: "); Serial.println(stepDelay8);
         
       }
       
@@ -425,7 +452,7 @@ void loop() {
         int J6start = inData.indexOf('F');
         int J7start = inData.indexOf('G');
         int J8start = inData.indexOf('H');
-        int SPstart = inData.indexOf('S');
+        int MMstart = inData.indexOf('Z');
         int J1dir = inData.substring(J1start + 1, J1start + 2).toInt(); if (J1dir == 0) J1dir = -1;
         int J2dir = inData.substring(J2start + 1, J2start + 2).toInt(); if (J2dir == 0) J2dir = -1;
         int J3dir = inData.substring(J3start + 1, J3start + 2).toInt(); if (J3dir == 0) J3dir = -1;
@@ -434,25 +461,40 @@ void loop() {
         int J6dir = inData.substring(J6start + 1, J6start + 2).toInt(); if (J6dir == 0) J6dir = -1;
         int J7dir = inData.substring(J7start + 1, J7start + 2).toInt(); if (J7dir == 0) J7dir = -1;
         int J8dir = inData.substring(J8start + 1, J8start + 2).toInt(); if (J8dir == 0) J8dir = -1;
-        int J1step = inData.substring(J1start + 2, J2start).toInt();
-        int J2step = inData.substring(J2start + 2, J3start).toInt();
-        int J3step = inData.substring(J3start + 2, J4start).toInt();
-        int J4step = inData.substring(J4start + 2, J5start).toInt();
-        int J5step = inData.substring(J5start + 2, J6start).toInt();
-        int J6step = inData.substring(J6start + 2, J7start).toInt();
-        int J7step = inData.substring(J7start + 2, J8start).toInt();
-        int J8step = inData.substring(J8start + 2, SPstart).toInt();
-        float SpeedIn = atof(inData.substring(SPstart + 1).c_str()); //.toFloat();
+        float J1step = inData.substring(J1start + 2, J2start).toInt();
+        float J2step = inData.substring(J2start + 2, J3start).toInt();
+        float J3step = inData.substring(J3start + 2, J4start).toInt();
+        float J4step = inData.substring(J4start + 2, J5start).toInt();
+        float J5step = inData.substring(J5start + 2, J6start).toInt();
+        float J6step = inData.substring(J6start + 2, J7start).toInt();
+        float J7step = inData.substring(J7start + 2, J8start).toInt();
+        float J8step = inData.substring(J8start + 2, MMstart).toInt();
+        int motion_mode = 0;
+        motion_mode = inData.substring(MMstart + 1).toInt();
         
         // Update step delays: 
-        stepDelay1 = 60L * 1000L / stepsPerRevolution1 * 1000 / motorSpeed1;
-        stepDelay2 = 60L * 1000L / stepsPerRevolution2 * 1000 / motorSpeed2;
-        stepDelay3 = 60L * 1000L / stepsPerRevolution3 * 1000 / motorSpeed3;
-        stepDelay4 = 60L * 1000L / stepsPerRevolution4 * 1000 / motorSpeed4;
-        stepDelay5 = 60L * 1000L / stepsPerRevolution5 * 1000 / motorSpeed5;
-        stepDelay6 = 60L * 1000L / stepsPerRevolution6 * 1000 / motorSpeed6;
-        stepDelay7 = 60L * 1000L / stepsPerRevolution7 * 1000 / motorSpeed7;
-        stepDelay8 = 60L * 1000L / stepsPerRevolution8 * 1000 / motorSpeed8;
+        stepDelay1 = 60.0 * 1000.0 / stepsPerRevolution1 * 1000.0 / motorSpeed1;
+        stepDelay2 = 60.0 * 1000.0 / stepsPerRevolution2 * 1000.0 / motorSpeed2;
+        stepDelay3 = 60.0 * 1000.0 / stepsPerRevolution3 * 1000.0 / motorSpeed3;
+        stepDelay4 = 60.0 * 1000.0 / stepsPerRevolution4 * 1000.0 / motorSpeed4;
+        stepDelay5 = 60.0 * 1000.0 / stepsPerRevolution5 * 1000.0 / motorSpeed5;
+        stepDelay6 = 60.0 * 1000.0 / stepsPerRevolution6 * 1000.0 / motorSpeed6;
+        stepDelay7 = 60.0 * 1000.0 / stepsPerRevolution7 * 1000.0 / motorSpeed7;
+        stepDelay8 = 60.0 * 1000.0 / stepsPerRevolution8 * 1000.0 / motorSpeed8;
+        int maxStepDelay = max(stepDelay1, stepDelay2);
+        maxStepDelay = max(maxStepDelay, stepDelay3);
+        maxStepDelay = max(maxStepDelay, stepDelay4);
+        maxStepDelay = max(maxStepDelay, stepDelay5);
+        maxStepDelay = max(maxStepDelay, stepDelay6);
+        maxStepDelay = max(maxStepDelay, stepDelay7);
+        maxStepDelay = max(maxStepDelay, stepDelay8);
+        float maxStepCount = max(J1step, J2step);
+        maxStepCount = max(maxStepCount, J3step);
+        maxStepCount = max(maxStepCount, J4step);
+        maxStepCount = max(maxStepCount, J5step);
+        maxStepCount = max(maxStepCount, J6step);
+        maxStepCount = max(maxStepCount, J7step);
+        maxStepCount = max(maxStepCount, J8step);
         long last_time_stamp_1 = 0; 
         long last_time_stamp_2 = 0; 
         long last_time_stamp_3 = 0; 
@@ -462,33 +504,7 @@ void loop() {
         long last_time_stamp_7 = 0; 
         long last_time_stamp_8 = 0; 
         long curr_time_stamp = micros(); 
-        
-        // FIND THE MIN DELAY (what happens if JXstep is 0 ? Then min will become 0
-        long minDelay = stepDelay1; if (minDelay == 0) minDelay = 60L * 1000L / 200 * 1000 / 1000; // normalize to 1000 rpm if stepDelay1 is 0
-        if (stepDelay2 < minDelay && stepDelay2 > 0) {
-          minDelay = stepDelay2; 
-        }
-        if (stepDelay3 < minDelay && stepDelay2 > 0) {
-          minDelay = stepDelay3; 
-        }
-        if (stepDelay3 < minDelay && stepDelay3 > 0) {
-          minDelay = stepDelay3; 
-        }
-        if (stepDelay4 < minDelay && stepDelay4 > 0) {
-          minDelay = stepDelay4; 
-        }
-        if (stepDelay5 < minDelay && stepDelay5 > 0) {
-          minDelay = stepDelay5; 
-        }
-        if (stepDelay6 < minDelay && stepDelay6 > 0) {
-          minDelay = stepDelay6; 
-        }
-        if (stepDelay7 < minDelay && stepDelay7 > 0) {
-          minDelay = stepDelay7; 
-        }
-        if (stepDelay8 < minDelay && stepDelay8 > 0) {
-          minDelay = stepDelay8; 
-        }
+
 
         //FIND HIGHEST STEP (TIME), i.e. num steps x time per step.
         long J1stepTime = J1step * stepDelay1; long highStepTime =  J1stepTime; 
@@ -521,7 +537,64 @@ void loop() {
           highStepTime = J8stepTime;
         }
 
-        //DETERMINE AXIS SKIP INCREMENT
+        // This motion mode is for simultaneous motion: 
+        // Lower the speeds of all the joints such that they will finish at the same time, based on num_steps 
+        if (motion_mode == 1) { 
+          float speedAdjustFactor = 1; //0.8; ///0.8; // empirically this works - theoretically not sure why just yet.
+          float tempSpeed1 = motorSpeed1; float tempSpeed2 = motorSpeed2; float tempSpeed3 = motorSpeed3; float tempSpeed4 = motorSpeed4;
+          float tempSpeed5 = motorSpeed5; float tempSpeed6 = motorSpeed6; float tempSpeed7 = motorSpeed7; float tempSpeed8 = motorSpeed8;
+          // Only reduce the speeds of the non-max step counts (keep the max step count joint the same speed) 
+          if (maxStepCount > J1step) tempSpeed1 = tempSpeed1 * speedAdjustFactor * (J1step / maxStepCount);
+          if (maxStepCount > J2step) tempSpeed2 = tempSpeed2 * speedAdjustFactor * (J2step / maxStepCount);
+          if (maxStepCount > J3step) tempSpeed3 = tempSpeed3 * speedAdjustFactor * (J3step / maxStepCount);
+          if (maxStepCount > J4step) tempSpeed4 = tempSpeed4 * speedAdjustFactor * (J4step / maxStepCount);
+          if (maxStepCount > J5step) tempSpeed5 = tempSpeed5 * speedAdjustFactor * (J5step / maxStepCount);
+          if (maxStepCount > J6step) tempSpeed6 = tempSpeed6 * speedAdjustFactor * (J6step / maxStepCount);
+          if (maxStepCount > J7step) tempSpeed7 = tempSpeed7 * speedAdjustFactor * (J7step / maxStepCount);
+          if (maxStepCount > J8step) tempSpeed8 = tempSpeed8 * speedAdjustFactor * (J8step / maxStepCount);
+
+          stepDelay1 = 60.0 * 1000.0 / stepsPerRevolution1 * 1000.0 / tempSpeed1;
+          stepDelay2 = 60.0 * 1000.0 / stepsPerRevolution2 * 1000.0 / tempSpeed2;
+          stepDelay3 = 60.0 * 1000.0 / stepsPerRevolution3 * 1000.0 / tempSpeed3;
+          stepDelay4 = 60.0 * 1000.0 / stepsPerRevolution4 * 1000.0 / tempSpeed4;
+          stepDelay5 = 60.0 * 1000.0 / stepsPerRevolution5 * 1000.0 / tempSpeed5;
+          stepDelay6 = 60.0 * 1000.0 / stepsPerRevolution6 * 1000.0 / tempSpeed6;
+          stepDelay7 = 60.0 * 1000.0 / stepsPerRevolution7 * 1000.0 / tempSpeed7;
+          stepDelay8 = 60.0 * 1000.0 / stepsPerRevolution8 * 1000.0 / tempSpeed8; 
+          
+          Serial.println("Motion mode 1 activated.");
+        }
+
+        // FIND THE MIN DELAY (what happens if JXstep is 0 ? Then min will become 0
+        long minDelay = stepDelay1; if (minDelay <= 0) minDelay = 60.0 * 1000.0 / 200.0 * 1000.0 / 400.0; // normalize to 400 rpm in case bad command given
+        if (stepDelay2 < minDelay && stepDelay2 > 0) {
+          minDelay = stepDelay2; 
+        }
+        if (stepDelay3 < minDelay && stepDelay3 > 0) {
+          minDelay = stepDelay3; 
+        }
+        if (stepDelay4 < minDelay && stepDelay4 > 0) {
+          minDelay = stepDelay4; 
+        }
+        if (stepDelay5 < minDelay && stepDelay5 > 0) {
+          minDelay = stepDelay5; 
+        }
+        if (stepDelay6 < minDelay && stepDelay6 > 0) {
+          minDelay = stepDelay6; 
+        }
+        if (stepDelay7 < minDelay && stepDelay7 > 0) {
+          minDelay = stepDelay7; 
+        }
+        if (stepDelay8 < minDelay && stepDelay8 > 0) {
+          minDelay = stepDelay8; 
+        }
+        if (minDelay < 0) {
+          Serial.println("Error: minDelay less than zero. Reseting to 400rpm equivalent.");
+          minDelay = 60.0 * 1000.0 / 200.0 * 1000.0 / 400.0; // normalize to 400 rpm in case bad command given
+        }
+
+        //DETERMINE AXIS SKIP INCREMENT (old code, commented out below)
+        /*
         int J1skip = (highStepTime / J1stepTime);
         int J2skip = (highStepTime / J2stepTime);
         int J3skip = (highStepTime / J3stepTime);
@@ -530,7 +603,8 @@ void loop() {
         int J6skip = (highStepTime / J6stepTime);
         int J7skip = (highStepTime / J7stepTime);
         int J8skip = (highStepTime / J8stepTime);
-
+        */
+        
         //RESET COUNTERS
         int J1done = 0;
         int J2done = 0;
@@ -550,6 +624,16 @@ void loop() {
         int J6skipCur = 0;
         int J7skipCur = 0;
         int J8skipCur = 0;
+
+        int didJ1step = 0;
+        int didJ2step = 0;
+        int didJ3step = 0;
+        int didJ4step = 0;
+        int didJ5step = 0;
+        int didJ6step = 0;
+        int didJ7step = 0;
+        int didJ8step = 0;
+        
   
         //SET DIRECTIONS
         if (J1dir == 1) {
@@ -592,10 +676,10 @@ void loop() {
         } else if (J8dir == -1) {
           digitalWrite(J8dirPin, LOW);
         }
-        delayMicroseconds(PulseWidth);
+        delayMicroseconds((int)PulseWidth);
         
         ////////////////////// PRINT VARIABLES /////////////////////
-        int print_debug = 0;
+        int print_debug = 1;
         if (print_debug == 1) {
           Serial.println("---------- v PRINT DEBUG v ----------");
           Serial.print("J1step: "); Serial.println(J1step);
@@ -624,17 +708,22 @@ void loop() {
           Serial.print("J7stepTime: "); Serial.println(J7stepTime);
           Serial.print("J8stepTime: "); Serial.println(J8stepTime);
           Serial.print("highStepTime: "); Serial.println(highStepTime);
-          Serial.print("J1skip: "); Serial.println(J1skip);
-          Serial.print("J2skip: "); Serial.println(J2skip);
-          Serial.print("J3skip: "); Serial.println(J3skip);
-          Serial.print("J4skip: "); Serial.println(J4skip);
-          Serial.print("J5skip: "); Serial.println(J5skip);
-          Serial.print("J6skip: "); Serial.println(J6skip);
-          Serial.print("J7skip: "); Serial.println(J7skip);
-          Serial.print("J8skip: "); Serial.println(J8skip);
+          //Serial.print("J1skip: "); Serial.println(J1skip);
+          //Serial.print("J2skip: "); Serial.println(J2skip);
+          //Serial.print("J3skip: "); Serial.println(J3skip);
+          //Serial.print("J4skip: "); Serial.println(J4skip);
+          //Serial.print("J5skip: "); Serial.println(J5skip);
+          //Serial.print("J6skip: "); Serial.println(J6skip);
+          //Serial.print("J7skip: "); Serial.println(J7skip);
+          //Serial.print("J8skip: "); Serial.println(J8skip);
+          Serial.print("Motion Mode: "); Serial.println(motion_mode);
           Serial.println("---------- ^ PRINT DEBUG ^ ----------");
 
         }
+
+        // EXPERIMENT:
+        minDelay = PulseWidth;
+        
         //DRIVE MOTORS
         while (J1done < J1step || J2done < J2step || J3done < J3step || J4done < J4step || J5done < J5step || J6done < J6step || J7done < J7step || J8done < J8step)
         {
@@ -644,64 +733,69 @@ void loop() {
           // time reading, i.e. curr_time won't be as updated as it should be by the time that code executes. 
           // But realistically this will lower RPM by a very small fractional amount...  
           
-          if (J1done < J1step && J1skipCur == 0 && (curr_time_stamp - last_time_stamp_1 >= stepDelay1 - minDelay)) {
-            digitalWrite(J1stepPin, HIGH);
+          if (J1done < J1step && J1skipCur == 0 && (curr_time_stamp - last_time_stamp_1 >= stepDelay1)) {
+            digitalWrite(J1stepPin, HIGH); didJ1step = 1;
             last_time_stamp_1 = curr_time_stamp; 
           }
-          if (J2done < J2step && J2skipCur == 0 && (curr_time_stamp - last_time_stamp_2 >= stepDelay2 - minDelay)) {
-            digitalWrite(J2stepPin, HIGH);
+          if (J2done < J2step && J2skipCur == 0 && (curr_time_stamp - last_time_stamp_2 >= stepDelay2)) {
+            digitalWrite(J2stepPin, HIGH); didJ2step = 1;
             last_time_stamp_2 = curr_time_stamp; 
           }
-          if (J3done < J3step && J3skipCur == 0 && (curr_time_stamp - last_time_stamp_3 >= stepDelay3 - minDelay)) {
-            digitalWrite(J3stepPin, HIGH);
+          if (J3done < J3step && J3skipCur == 0 && (curr_time_stamp - last_time_stamp_3 >= stepDelay3)) {
+            digitalWrite(J3stepPin, HIGH); didJ3step = 1;
             last_time_stamp_3 = curr_time_stamp; 
           }
-          if (J4done < J4step && J4skipCur == 0 && (curr_time_stamp - last_time_stamp_4 >= stepDelay4 - minDelay)) {
-            digitalWrite(J4stepPin, HIGH);
+          if (J4done < J4step && J4skipCur == 0 && (curr_time_stamp - last_time_stamp_4 >= stepDelay4)) {
+            digitalWrite(J4stepPin, HIGH); didJ4step = 1;
             last_time_stamp_4 = curr_time_stamp; 
           }
-          if (J5done < J5step && J5skipCur == 0 && (curr_time_stamp - last_time_stamp_5 >= stepDelay5 - minDelay)) {
-            digitalWrite(J5stepPin, HIGH);
+          if (J5done < J5step && J5skipCur == 0 && (curr_time_stamp - last_time_stamp_5 >= stepDelay5)) {
+            digitalWrite(J5stepPin, HIGH); didJ5step = 1;
             last_time_stamp_5 = curr_time_stamp; 
           }
-          if (J6done < J6step && J6skipCur == 0 && (curr_time_stamp - last_time_stamp_6 >= stepDelay6 - minDelay)) {
-            digitalWrite(J6stepPin, HIGH);
+          if (J6done < J6step && J6skipCur == 0 && (curr_time_stamp - last_time_stamp_6 >= stepDelay6)) {
+            digitalWrite(J6stepPin, HIGH); didJ6step = 1;
             last_time_stamp_6 = curr_time_stamp; 
           }
           //
-          if (J7done < J7step && J7skipCur == 0 && (curr_time_stamp - last_time_stamp_7 >= stepDelay7 - minDelay)) {
-            digitalWrite(J7stepPin, HIGH); 
+          if (J7done < J7step && J7skipCur == 0 && (curr_time_stamp - last_time_stamp_7 >= stepDelay7)) {
+            digitalWrite(J7stepPin, HIGH); didJ7step = 1;
             last_time_stamp_7 = curr_time_stamp; 
           }
-          if (J8done < J8step && J8skipCur == 0 && (curr_time_stamp - last_time_stamp_8 >= stepDelay8 - minDelay)) {
-            digitalWrite(J8stepPin, HIGH);
+          if (J8done < J8step && J8skipCur == 0 && (curr_time_stamp - last_time_stamp_8 >= stepDelay8)) {
+            digitalWrite(J8stepPin, HIGH); didJ8step = 1;
             last_time_stamp_8 = curr_time_stamp; 
           }
           
           ////////////////////// TODO: figure out how they're setting speeds, counting steps until finished. Modify for our stepper lib.
           
           //#############DELAY AND SET LOW
-          delayMicroseconds(PulseWidth); // Minimum pulse width the driver needs. 
+          delayMicroseconds((int)PulseWidth); // Minimum pulse width the driver needs. 
+          
           
           digitalWrite(J1stepPin, LOW);
-          J1done = ++J1done;
+          if (didJ1step == 1) J1done = ++J1done; // 
           digitalWrite(J2stepPin, LOW);
-          J2done = ++J2done;
+          if (didJ2step == 1) J2done = ++J2done; //
           digitalWrite(J3stepPin, LOW);
-          J3done = ++J3done;
+          if (didJ3step == 1) J3done = ++J3done; //
           digitalWrite(J4stepPin, LOW);
-          J4done = ++J4done;
+          if (didJ4step == 1) J4done = ++J4done; //
           digitalWrite(J5stepPin, LOW);
-          J5done = ++J5done;
+          if (didJ5step == 1) J5done = ++J5done; //
           digitalWrite(J6stepPin, LOW);
-          J6done = ++J6done;
+          if (didJ6step == 1) J6done = ++J6done; //
           digitalWrite(J7stepPin, LOW);
-          J7done = ++J7done;
+          if (didJ7step == 1) J7done = ++J7done; //
           digitalWrite(J8stepPin, LOW);
-          J8done = ++J8done;
+          if (didJ8step == 1) J8done = ++J8done; //
+          
           
           // DELAY FOR SPEEEEED SETTINGS
-          delayMicroseconds(minDelay); 
+          //delayMicroseconds((int)minDelay); 
+
+          didJ1step = 0; didJ2step = 0; didJ3step = 0; didJ4step = 0;
+          didJ5step = 0; didJ6step = 0; didJ7step = 0; didJ8step = 0;
           
           /*
           if (J1done < J1step && J1skipCur == 0) {
@@ -774,6 +868,7 @@ void loop() {
             J8skipCur = 0;
           }
           */
+          
         }
         
         
