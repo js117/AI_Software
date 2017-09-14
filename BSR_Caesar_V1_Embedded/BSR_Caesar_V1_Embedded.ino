@@ -132,7 +132,7 @@ Stepper D8_Stepper(stepsPerRevolution8, D8_Dp, D8_Dm, D8_Pp, D8_Pm);
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(115200);
+  Serial.begin(115200); // 115200
 
   pinMode(D1_Pp, OUTPUT);
   pinMode(D1_Pm, OUTPUT);
@@ -443,7 +443,7 @@ void loop() {
       //-----------------------------------------------------------------------
       if (function == "MJ")
       {
-        Serial.print("=== "); Serial.print(inData); Serial.println();
+        //Serial.print("=== "); Serial.print(inData); Serial.println();
         int J1start = inData.indexOf('A');
         int J2start = inData.indexOf('B');
         int J3start = inData.indexOf('C');
@@ -679,7 +679,7 @@ void loop() {
         delayMicroseconds((int)PulseWidth);
         
         ////////////////////// PRINT VARIABLES /////////////////////
-        int print_debug = 1;
+        int print_debug = 0;
         if (print_debug == 1) {
           Serial.println("---------- v PRINT DEBUG v ----------");
           Serial.print("J1step: "); Serial.println(J1step);
@@ -874,7 +874,8 @@ void loop() {
         
         
         inData = ""; // Clear recieved buffer
-        Serial.print("Move Done");
+        Serial.write('1'); // This is to tell the controller that we are ready for a new command
+        //Serial.print("Move Done");
       }
       else
       {

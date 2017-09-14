@@ -8,10 +8,15 @@ import time
 import os
 import serial
 import sys
+import threading
+import msvcrt # WINDOWS ONLY (what does Linux need?)
+import pickle
 
 from camera import Camera
 from draw import Gravity, put_text
 
+import pygame
+from pygame.locals import *
 
 from pykinect2 import PyKinectV2
 from pykinect2.PyKinectV2 import *
@@ -29,6 +34,9 @@ global JointMinSpeed
 global JointMaxSpeed
 global NumStepsPerPress
 global CustomCommandString
+global RecordingBufferComposite
+global RecordingBufferExplicit
+global LastRecordedMotionBuffer # for easy replay & reverse
 # Joint Name/Description by array index:		
 # 0 - Base Rotation	
 # 1 - Shoulder Pitch	
@@ -43,9 +51,12 @@ global CustomCommandString
 baudrate = 115200
 RobotCurrentJoint = 0
 RobotJointSpeeds = [100, 100, 100, 100, 100, 100, 100, 100]
+RecordingBufferComposite = [[], [], [], [], [], [], [], [], []] # RecordingBufferComposite[RobotCurrentJoint].append(dir * NumStepsPerPress) for manual user cmds
+RecordingBufferExplicit = [[],[],[],[]] # this one should be easier to use; Buffer[0] is timestamp
+# RecordingBufferExplicit[1].append(RobotCurrentJoint); RecordingBufferExplicit[2].append(dir); RecordingBufferExplicit[3].append(NumStepsPerPress);
 JointMinSpeed = 10
 JointMaxSpeed = 2500
-NumStepsPerPress = 100
+NumStepsPerPress = 10
 CustomCommandString = ""
 
 #########################################################################################
@@ -196,11 +207,54 @@ def ReverseCustomMoveCommand(inData, debug_mode=0):
 		print(reverse_cmd)
 	
 	return reverse_cmd
+	#inData1 = "MJA01000B12000C03000D14000E05000F16000G17000H18000"	
+	#inData2 = "MJA00B00C00D00E17864F00G00H00"
+	#ReverseCustomMoveCommand(inData2, debug_mode=1)
+	#sys.exit()
+
+
+def ReplaySavedManualMotion(MotionBuffer, seq_dir=1):
+	# RecordingBufferExplicit = [[timestamp],[selectedJoint],[direction],[numSteps]]
+	numMoves = len(MotionBuffer[0])
 	
-#inData1 = "MJA01000B12000C03000D14000E05000F16000G17000H18000"	
-#inData2 = "MJA00B00C00D00E17864F00G00H00"
-#ReverseCustomMoveCommand(inData2, debug_mode=1)
-#sys.exit()
+	state = '0'
+	
+	if seq_dir == 1:
+		for t in range(0, numMoves):
+			currentJoint = MotionBuffer[1][t]
+			currentDir = MotionBuffer[2][t]
+			currentSteps = MotionBuffer[3][t]
+			cmd_str = "MJ"+chr(65+currentJoint)+str(currentDir)+str(currentSteps)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			RobotSerialController.write(cmd_str)
+			state = '0' # Write command to Arduino, set state to 0 until we get response. 
+			# After a write, we should be able to read the updated state from Arduino
+			while state == '0': # Wait for Arduino to be ready
+				RobotSerialController.flushInput() # Clear input buffer
+				state = str(RobotSerialController.read())
+			
+	elif seq_dir == -1:
+		for t in range(numMoves-1, -1, -1):
+			currentJoint = MotionBuffer[1][t]
+			currentDir = MotionBuffer[2][t]
+			newDir = -1
+			if currentDir == 0:
+				newDir = 1
+			elif currentDir == 1:
+				newDir = 0
+			else:
+				print("Error in recorded direction: " + str(currentDir))
+				return
+			currentSteps = MotionBuffer[3][t]
+			cmd_str = "MJ"+chr(65+currentJoint)+str(newDir)+str(currentSteps)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			RobotSerialController.write(cmd_str)
+			state = '0' # Write command to Arduino, set state to 0 until we get response. 
+			# After a write, we should be able to read the updated state from Arduino
+			while state == '0': # Wait for Arduino to be ready
+				RobotSerialController.flushInput() # Clear input buffer
+				state = str(RobotSerialController.read())
+			
+	else:
+		print("Error: bad seq_dir: "+str(seq_dir))
 
 ports = serial_ports()
 print(ports)
@@ -234,15 +288,265 @@ HEIGHT_ir = sensor_kinect.infrared_frame_desc.Height
 
 cv2.namedWindow("cam", cv2.WINDOW_NORMAL)
 
+global is_exit
+global is_recording_motions
+global is_recording_composite # records motions and visual data
+global pygame_screen
+global VIEW_MODE
+global c_frame
+global d_frame
+global ir_frame
+
 VIEW_MODE_RGB = 0
 VIEW_MODE_DEPTH = 1
 VIEW_MODE_IR = 2
 VIEW_MODE = VIEW_MODE_RGB
 
+is_recording_motions = 0
+is_recording_composite = 0
+
 RESIZED_WIDTH = 480.0
 t1 = 0
 t2 = 0
 
+def KeyPressThread(): 
+	global VIEW_MODE
+	global c_frame
+	global d_frame
+	global ir_frame
+	global RobotSerialController
+	global baudrate
+	global RobotCurrentJoint	# Integer from 1 to 8: 6 robot joints, + gripper, + neck
+	global RobotJointSpeeds
+	global JointMinSpeed
+	global JointMaxSpeed
+	global NumStepsPerPress
+	global CustomCommandString
+	global pygame_screen
+	global is_exit
+	global is_recording_motions
+	global is_recording_composite
+	global LastRecordedMotionBuffer
+	last_reverse_dir = -1
+	
+	pygame.init() 
+	pygame_screen = pygame.display.set_mode((800, 600)) # this square corresponds to size of img we capture
+	instructions_img = pygame.image.load('instructions.jpg')
+	
+	state = '0' # for interacting with Arduino for serial commands
+	
+	while True:
+		# Key press functionality
+		if is_exit == 1:
+			sys.exit()
+			
+		pygame_screen.blit(instructions_img,(0,0))
+		pygame.display.flip()
+		
+		pygame.event.pump()
+		keys = pygame.key.get_pressed()  #checking pressed keys
+		
+		# Doing it this way below gets "FAST KEYS", i.e. lots of responses if touched/held
+		
+		# MOVE FORWARDS
+		if keys[pygame.K_q]: 
+			cmd_str = "MJ"+chr(65+RobotCurrentJoint)+str("0")+str(NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			#print(cmd_str)
+			RobotSerialController.write(cmd_str)
+			print("Manual control - move FORWARDS")
+			
+			state = '0' # Write command to Arduino, set state to 0 until we get response. 
+			# After a write, we should be able to read the updated state from Arduino
+			while state == '0': # Wait for Arduino to be ready
+				RobotSerialController.flushInput() # Clear input buffer
+				state = str(RobotSerialController.read())
+			
+			if is_recording_motions == 1:
+				timestamp = time.time() * 1000
+				RecordingBufferExplicit[0].append(timestamp)
+				RecordingBufferExplicit[1].append(RobotCurrentJoint)
+				RecordingBufferExplicit[2].append(0) # direction 
+				RecordingBufferExplicit[3].append(NumStepsPerPress)
+				
+		# MOVE BACKWARDS
+		if keys[pygame.K_w]: #k == ord('w'):
+			cmd_str = "MJ"+chr(65+RobotCurrentJoint)+str("1")+str(NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			#print(cmd_str)
+			RobotSerialController.write(cmd_str)
+			print("Manual control - move BACKWARDS")
+			
+			state = '0' # Write command to Arduino, set state to 0 until we get response. 
+			# After a write, we should be able to read the updated state from Arduino
+			while state == '0': # Wait for Arduino to be ready
+				RobotSerialController.flushInput() # Clear input buffer
+				state = str(RobotSerialController.read())
+			
+			if is_recording_motions == 1:
+				timestamp = time.time() * 1000
+				RecordingBufferExplicit[0].append(timestamp)
+				RecordingBufferExplicit[1].append(RobotCurrentJoint)
+				RecordingBufferExplicit[2].append(1) # direction 
+				RecordingBufferExplicit[3].append(NumStepsPerPress)
+				
+		# INCREASE JOINT SPEED
+		if keys[pygame.K_a]:
+			newSpeed = RobotJointSpeeds[RobotCurrentJoint] + 10
+			if newSpeed >= JointMaxSpeed:
+				newSpeed = JointMaxSpeed
+			RobotJointSpeeds[RobotCurrentJoint] = newSpeed
+			cmd_str = "SS"+chr(65+RobotCurrentJoint)+str(newSpeed)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			print(cmd_str)
+			RobotSerialController.write(cmd_str)
+			print("Increase speed of joint: " + str(RobotCurrentJoint+1) + " to: " + str(newSpeed))
+		# DECREASE JOINT SPEED
+		if keys[pygame.K_s]:
+			newSpeed = RobotJointSpeeds[RobotCurrentJoint] - 10
+			if newSpeed <= JointMinSpeed:
+				newSpeed = JointMinSpeed
+			RobotJointSpeeds[RobotCurrentJoint] = newSpeed
+			cmd_str = "SS"+chr(65+RobotCurrentJoint)+str(newSpeed)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			print(cmd_str)
+			RobotSerialController.write(cmd_str)
+			print("Increase speed of joint: " + str(RobotCurrentJoint+1) + " to: " + str(newSpeed) + " \n")
+		
+		for event in pygame.event.get():
+				if event.type == pygame.KEYDOWN:
+				
+					# Below: SLOW KEYS (i.e. capture 1 keypress
+				
+					if event.key == K_z: # QUIT PROGRAM
+						is_exit = 1
+						break
+						
+					if event.key == K_v: # TOGGLE VIEW MODE
+						if (VIEW_MODE == VIEW_MODE_RGB):
+							VIEW_MODE = VIEW_MODE_DEPTH
+							continue
+						elif (VIEW_MODE == VIEW_MODE_DEPTH):
+							VIEW_MODE = VIEW_MODE_IR
+							continue
+						elif (VIEW_MODE == VIEW_MODE_IR):
+							VIEW_MODE = VIEW_MODE_RGB
+							continue
+						else:
+							print("Error: view mode undefined: " + str(VIEW_MODE))
+							break
+							
+					if event.key == K_c: # CAPTURE IMAGE
+						timestamp = str(time.time()).replace(".","")
+						img_name = timestamp+'.jpg'
+						print("\nSaving image: "+img_name)
+						cv2.imwrite(img_name, c_frame) # new_dataset_folder+"/"+
+						continue
+						
+					if event.key == K_1: 
+						RobotCurrentJoint = 0
+						print("Manual control - current joint set to: BASE ROTATION \n")
+						
+					if event.key == K_2: 
+						RobotCurrentJoint = 1
+						print("Manual control - current joint set to: SHOULDER PITCH \n")
+					
+					if event.key == K_3: 
+						RobotCurrentJoint = 2
+						print("Manual control - current joint set to: ELBOW PITCH \n")
+						
+					if event.key == K_4: 
+						RobotCurrentJoint = 3
+						print("Manual control - current joint set to: ELBOW ROLL \n")
+						
+					if event.key == K_5: 
+						RobotCurrentJoint = 4
+						print("Manual control - current joint set to: WRIST PITCH \n")
+						
+					if event.key == K_6: 
+						RobotCurrentJoint = 5
+						print("Manual control - current joint set to: WRIST ROLL \n")
+						
+					if event.key == K_7: 
+						RobotCurrentJoint = 6
+						print("Manual control - current joint set to: GRIPPER \n")
+						
+					if event.key == K_8: 
+						RobotCurrentJoint = 7
+						print("Manual control - current joint set to: NECK \n")
+						
+					if event.key == K_d: 
+						NumStepsPerPress = NumStepsPerPress + 5
+						print("Increase NumStepsPerPress to: "+str(NumStepsPerPress))	
+						
+					if event.key == K_f: 
+						NumStepsPerPress = NumStepsPerPress - 5
+						if NumStepsPerPress <= 5:
+							NumStepsPerPress = 5
+						print("Decrease NumStepsPerPress to: "+str(NumStepsPerPress))	
+						
+					if event.key == K_t: 
+						if is_recording_motions == 0: 
+							RecordingBufferExplicit = [[],[],[],[]] # reset/clear buffer
+							is_recording_motions = 1
+							print("\n --- Recording Motions, press T again to stop, Y to stop and save. --- \n")
+							break # back to main loop, doesn't exist program
+						elif is_recording_motions == 1: 
+							is_recording_motions = 0
+							print("\n --- Stop recording motions. Not saved. --- \n")
+							
+					if event.key == K_y: 
+						motion_to_save = input("Enter the name of your motion to save: ")
+						with open(motion_to_save+".motion", 'wb') as fp:
+							pickle.dump(RecordingBufferExplicit, fp)
+						print("Saved motion as: " + motion_to_save+".motion" + "\n")
+						LastRecordedMotionBuffer = RecordingBufferExplicit # make a copy
+						is_recording_motions = 0
+						last_reverse_dir = -1
+						
+					if event.key == K_g:
+						print("\n --- Reversing last motion sequence... ---\n")
+						print(RecordingBufferExplicit)
+						ReplaySavedManualMotion(RecordingBufferExplicit, seq_dir = last_reverse_dir)
+						# So after the first time a motion is saved, it will be reversed, as set in the motion_save above
+						last_reverse_dir = last_reverse_dir * -1
+							
+						
+		
+		'''if msvcrt.kbhit():
+			n = msvcrt.getch().decode("utf-8").lower()
+			print(n)
+			
+				
+			############## CURRENT TODO: FIX CUSTOM COMMANDS BELOW ####################	
+				
+			if n == 'e':	# ENTER CUSTOM COMMAND STRING
+				cmd_str = input("Enter your custom command string and press enter: ")
+				CustomCommandString = cmd_str
+				cmd_str = cmd_str + "\n"
+				cmd_str = cmd_str.encode('utf-8')
+				print(cmd_str)
+				RobotSerialController.write(cmd_str)
+				print("^ Running this custom command string. Press 'R' to reverse.")
+				
+			if n == 'r':	# REVERSE THE LAST CUSTOM COMMAND STRING
+				cmd_str = ReverseCustomMoveCommand(CustomCommandString, debug_mode=1) # argument will hold the last custom command, by above logic. 
+				# For now we are assuming speeds have been kept constant between the initial cmd and calling its reverse (does this matter for position?)
+				CustomCommandString = cmd_str # for easy testing, allow us to keep reversing back and forth between 2 workspace positions
+				cmd_str = cmd_str + "\n"
+				cmd_str = cmd_str.encode('utf-8')
+				print(cmd_str)
+				RobotSerialController.write(cmd_str)
+				print("^ Running this custom command string. Press 'R' to reverse.")
+		'''		
+	sys.exit() # if breaking from while loop
+	
+
+keypress_thread = threading.Thread(target=KeyPressThread)
+try:
+	keypress_thread.setDaemon(True)  # important for cleanup ? 
+	keypress_thread.start() # join too? 
+except (KeyboardInterrupt, SystemExit):
+	cleanup_stop_thread();
+	sys.exit()
+
+is_exit = 0
 while True: 
 	if sensor_kinect.has_new_color_frame():
 		t1 = time.time() * 1000
@@ -261,35 +565,7 @@ while True:
 		ir_frame = sensor_kinect.get_last_infrared_frame(); ir_len = ir_frame.shape[0]
 		ir_frame = ir_frame.reshape(HEIGHT_ir, WIDTH_ir, -1)
 		
-		#print(c_frame.shape)
-		#print(d_frame.shape)
-		#print(ir_frame.shape)
-		#print("------------------")
-		
-		
-		
-		
 
-		
-		
-
-		# REAL-TIME QR CODE TRACKING: doesn't seem that it will work without sufficiently large pixel size 
-		
-		# However - we may be able to aid our computer vision algorithms by augmenting their input tensors with existing 
-		# computer vision filters: edges, gradients, blobs, etc. This would let a CNN's lower-level filters move on to 
-		# more interesting and task-specific stuff. Maybe it's like getting pre-trained low-level layers for free :) 
-		
-		# TODO: 
-		# 1. Create "CV filtered inputs" of c_frame via edges, gradients, blobs, etc
-		# 2. Create "command screen" composite image of c_frame with above, but also DEPTH and IR. Make 'composite view' into new mode.
-		# 3. Python robot control, and therefore user input command recording. See "QA_Basic_Demo.py"
-			
-		
-		#rgb_display_frame = cv2.drawKeypoints(c_frame_ds, kp, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS, outImage=None)
-		
-		
-		#print(len(kp_fast))
-		#print(kp_fast[0])
 		t2 = time.time()*1000 - t1
 		#print(t2)
 		if (VIEW_MODE == VIEW_MODE_RGB):
@@ -301,128 +577,16 @@ while True:
 		else:
 			print("Error: view mode undefined: " + str(VIEW_MODE))
 			break
-		
-		
+			
 		wait_key = (cv2.waitKey(1) & 0xFF)
 		
-		if wait_key == ord('z'):	# QUIT PROGRAM
+		if is_exit == 1:
 			break
-		if wait_key == ord('v'):	# TOGGLE VIEW MODE
-			if (VIEW_MODE == VIEW_MODE_RGB):
-				VIEW_MODE = VIEW_MODE_DEPTH
-				continue
-			elif (VIEW_MODE == VIEW_MODE_DEPTH):
-				VIEW_MODE = VIEW_MODE_IR
-				continue
-			elif (VIEW_MODE == VIEW_MODE_IR):
-				VIEW_MODE = VIEW_MODE_RGB
-				continue
-			else:
-				print("Error: view mode undefined: " + str(VIEW_MODE))
-				break
-
-		if wait_key == ord('c'):	# CAPTURE IMAGE
-			timestamp = str(time.time()).replace(".","")
-			img_name = timestamp+'.jpg'
-			print("\nSaving image: "+img_name)
-			cv2.imwrite(img_name, c_frame) # new_dataset_folder+"/"+
-			continue
-
-		if wait_key == ord('1'):
-			RobotCurrentJoint = 0
-			print("Manual control - current joint set to: BASE ROTATION \n")
 			
-		if wait_key == ord('2'):
-			RobotCurrentJoint = 1
-			print("Manual control - current joint set to: SHOULDER PITCH \n")
+cleanup_stop_thread()
+sys.exit()
 		
-		if wait_key == ord('3'):
-			RobotCurrentJoint = 2
-			print("Manual control - current joint set to: ELBOW PITCH \n")
-			
-		if wait_key == ord('4'):
-			RobotCurrentJoint = 3
-			print("Manual control - current joint set to: ELBOW ROLL \n")
-			
-		if wait_key == ord('5'):
-			RobotCurrentJoint = 4
-			print("Manual control - current joint set to: WRIST PITCH \n")
-			
-		if wait_key == ord('6'):
-			RobotCurrentJoint = 5
-			print("Manual control - current joint set to: WRIST ROLL \n")
-			
-		if wait_key == ord('7'):
-			RobotCurrentJoint = 6
-			print("Manual control - current joint set to: GRIPPER \n")
-			
-		if wait_key == ord('8'):
-			RobotCurrentJoint = 7
-			print("Manual control - current joint set to: NECK \n")
-			
-		if wait_key == ord('q'):
-			cmd_str = "MJ"+chr(65+RobotCurrentJoint)+str("0")+str(NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
-			print(cmd_str)
-			RobotSerialController.write(cmd_str)
-			print("Manual control - move FORWARD \n")
-			
-		if wait_key == ord('w'):
-			cmd_str = "MJ"+chr(65+RobotCurrentJoint)+str("1")+str(NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
-			print(cmd_str)
-			RobotSerialController.write(cmd_str)
-			print("Manual control - move BACKWARD \n")
-			
-		if wait_key == ord('a'):
-			newSpeed = RobotJointSpeeds[RobotCurrentJoint] + 10
-			if newSpeed >= JointMaxSpeed:
-				newSpeed = JointMaxSpeed
-			RobotJointSpeeds[RobotCurrentJoint] = newSpeed
-			cmd_str = "SS"+chr(65+RobotCurrentJoint)+str(newSpeed)+"\n"; cmd_str = cmd_str.encode('utf-8')
-			print(cmd_str)
-			RobotSerialController.write(cmd_str)
-			print("Increase speed of joint: " + str(RobotCurrentJoint+1) + " to: " + str(newSpeed) + " \n")	
-			
-		if wait_key == ord('s'):
-			newSpeed = RobotJointSpeeds[RobotCurrentJoint] - 10
-			if newSpeed <= JointMinSpeed:
-				newSpeed = JointMinSpeed
-			RobotJointSpeeds[RobotCurrentJoint] = newSpeed
-			cmd_str = "SS"+chr(65+RobotCurrentJoint)+str(newSpeed)+"\n"; cmd_str = cmd_str.encode('utf-8')
-			print(cmd_str)
-			RobotSerialController.write(cmd_str)
-			print("Increase speed of joint: " + str(RobotCurrentJoint+1) + " to: " + str(newSpeed) + " \n")		
-			
-		if wait_key == ord('d'):
-			NumStepsPerPress = NumStepsPerPress + 5
-			print("Increase NumStepsPerPress to: "+str(NumStepsPerPress)+" \n")	
-			
-		if wait_key == ord('f'):
-			NumStepsPerPress = NumStepsPerPress - 5
-			if NumStepsPerPress <= 10:
-				NumStepsPerPress = 10
-			print("Decrease NumStepsPerPress to: "+str(NumStepsPerPress)+" \n")	
-			
-		############## CURRENT TODO: FIX CUSTOM COMMANDS BELOW ####################	
-			
-		if wait_key == ord('e'):	# ENTER CUSTOM COMMAND STRING
-			cmd_str = input("Enter your custom command string and press enter: ")
-			CustomCommandString = cmd_str
-			cmd_str = cmd_str + "\n"
-			cmd_str = cmd_str.encode('utf-8')
-			print(cmd_str)
-			RobotSerialController.write(cmd_str)
-			print("^ Running this custom command string. Press 'R' to reverse.")
-			
-		if wait_key == ord('r'):	# REVERSE THE LAST CUSTOM COMMAND STRING
-			cmd_str = ReverseCustomMoveCommand(CustomCommandString, debug_mode=1) # argument will hold the last custom command, by above logic. 
-			# For now we are assuming speeds have been kept constant between the initial cmd and calling its reverse (does this matter for position?)
-			CustomCommandString = cmd_str # for easy testing, allow us to keep reversing back and forth between 2 workspace positions
-			cmd_str = cmd_str + "\n"
-			cmd_str = cmd_str.encode('utf-8')
-			print(cmd_str)
-			RobotSerialController.write(cmd_str)
-			print("^ Running this custom command string. Press 'R' to reverse.")
-			
+
 			
 			
 
