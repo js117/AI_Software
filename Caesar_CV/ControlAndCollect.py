@@ -50,7 +50,7 @@ global LastRecordedMotionBuffer # for easy replay & reverse
 ### Some initializations: 
 baudrate = 115200
 RobotCurrentJoint = 0
-RobotJointSpeeds = [100, 100, 100, 100, 100, 100, 100, 100]
+RobotJointSpeeds = [400, 400, 400, 400, 400, 400, 400, 400]
 RecordingBufferComposite = [[], [], [], [], [], [], [], [], []] # RecordingBufferComposite[RobotCurrentJoint].append(dir * NumStepsPerPress) for manual user cmds
 RecordingBufferExplicit = [[],[],[],[]] # this one should be easier to use; Buffer[0] is timestamp
 # RecordingBufferExplicit[1].append(RobotCurrentJoint); RecordingBufferExplicit[2].append(dir); RecordingBufferExplicit[3].append(NumStepsPerPress);
@@ -287,6 +287,7 @@ WIDTH_ir = sensor_kinect.infrared_frame_desc.Width		# N.B. infrared is for seein
 HEIGHT_ir = sensor_kinect.infrared_frame_desc.Height
 
 cv2.namedWindow("cam", cv2.WINDOW_NORMAL)
+cv2.namedWindow("wrist", cv2.WINDOW_NORMAL)
 
 global is_exit
 global is_recording_motions
@@ -296,6 +297,7 @@ global VIEW_MODE
 global c_frame
 global d_frame
 global ir_frame
+global wrist_frame
 
 VIEW_MODE_RGB = 0
 VIEW_MODE_DEPTH = 1
@@ -330,8 +332,8 @@ def KeyPressThread():
 	last_reverse_dir = -1
 	
 	pygame.init() 
-	pygame_screen = pygame.display.set_mode((800, 600)) # this square corresponds to size of img we capture
-	instructions_img = pygame.image.load('instructions.jpg')
+	pygame_screen = pygame.display.set_mode((600, 450)) # this square corresponds to size of img we capture
+	instructions_img = pygame.image.load('instructions_j1.jpg')
 	
 	state = '0' # for interacting with Arduino for serial commands
 	
@@ -388,26 +390,7 @@ def KeyPressThread():
 				RecordingBufferExplicit[2].append(1) # direction 
 				RecordingBufferExplicit[3].append(NumStepsPerPress)
 				
-		# INCREASE JOINT SPEED
-		if keys[pygame.K_a]:
-			newSpeed = RobotJointSpeeds[RobotCurrentJoint] + 10
-			if newSpeed >= JointMaxSpeed:
-				newSpeed = JointMaxSpeed
-			RobotJointSpeeds[RobotCurrentJoint] = newSpeed
-			cmd_str = "SS"+chr(65+RobotCurrentJoint)+str(newSpeed)+"\n"; cmd_str = cmd_str.encode('utf-8')
-			print(cmd_str)
-			RobotSerialController.write(cmd_str)
-			print("Increase speed of joint: " + str(RobotCurrentJoint+1) + " to: " + str(newSpeed))
-		# DECREASE JOINT SPEED
-		if keys[pygame.K_s]:
-			newSpeed = RobotJointSpeeds[RobotCurrentJoint] - 10
-			if newSpeed <= JointMinSpeed:
-				newSpeed = JointMinSpeed
-			RobotJointSpeeds[RobotCurrentJoint] = newSpeed
-			cmd_str = "SS"+chr(65+RobotCurrentJoint)+str(newSpeed)+"\n"; cmd_str = cmd_str.encode('utf-8')
-			print(cmd_str)
-			RobotSerialController.write(cmd_str)
-			print("Increase speed of joint: " + str(RobotCurrentJoint+1) + " to: " + str(newSpeed) + " \n")
+		
 		
 		for event in pygame.event.get():
 				if event.type == pygame.KEYDOWN:
@@ -441,36 +424,66 @@ def KeyPressThread():
 						
 					if event.key == K_1: 
 						RobotCurrentJoint = 0
+						instructions_img = pygame.image.load('instructions_j1.jpg')
 						print("Manual control - current joint set to: BASE ROTATION \n")
 						
 					if event.key == K_2: 
 						RobotCurrentJoint = 1
+						instructions_img = pygame.image.load('instructions_j2.jpg')
 						print("Manual control - current joint set to: SHOULDER PITCH \n")
 					
 					if event.key == K_3: 
 						RobotCurrentJoint = 2
+						instructions_img = pygame.image.load('instructions_j3.jpg')
 						print("Manual control - current joint set to: ELBOW PITCH \n")
 						
 					if event.key == K_4: 
 						RobotCurrentJoint = 3
+						instructions_img = pygame.image.load('instructions_j4.jpg')
 						print("Manual control - current joint set to: ELBOW ROLL \n")
 						
 					if event.key == K_5: 
 						RobotCurrentJoint = 4
+						instructions_img = pygame.image.load('instructions_j5.jpg')
 						print("Manual control - current joint set to: WRIST PITCH \n")
 						
 					if event.key == K_6: 
 						RobotCurrentJoint = 5
+						instructions_img = pygame.image.load('instructions_j6.jpg')
 						print("Manual control - current joint set to: WRIST ROLL \n")
 						
 					if event.key == K_7: 
 						RobotCurrentJoint = 6
+						instructions_img = pygame.image.load('instructions_j7.jpg')
 						print("Manual control - current joint set to: GRIPPER \n")
 						
 					if event.key == K_8: 
 						RobotCurrentJoint = 7
+						instructions_img = pygame.image.load('instructions_j8.jpg')
 						print("Manual control - current joint set to: NECK \n")
 						
+					# INCREASE JOINT SPEED
+					if event.key == K_a:
+						newSpeed = RobotJointSpeeds[RobotCurrentJoint] + 10
+						if newSpeed >= JointMaxSpeed:
+							newSpeed = JointMaxSpeed
+						RobotJointSpeeds[RobotCurrentJoint] = newSpeed
+						cmd_str = "SS"+chr(65+RobotCurrentJoint)+str(newSpeed)+"\n"; cmd_str = cmd_str.encode('utf-8')
+						print(cmd_str)
+						RobotSerialController.write(cmd_str)
+						print("Increase speed of joint: " + str(RobotCurrentJoint+1) + " to: " + str(newSpeed))
+						
+					# DECREASE JOINT SPEED
+					if event.key == K_s:
+						newSpeed = RobotJointSpeeds[RobotCurrentJoint] - 10
+						if newSpeed <= JointMinSpeed:
+							newSpeed = JointMinSpeed
+						RobotJointSpeeds[RobotCurrentJoint] = newSpeed
+						cmd_str = "SS"+chr(65+RobotCurrentJoint)+str(newSpeed)+"\n"; cmd_str = cmd_str.encode('utf-8')
+						print(cmd_str)
+						RobotSerialController.write(cmd_str)
+						print("Increase speed of joint: " + str(RobotCurrentJoint+1) + " to: " + str(newSpeed) + " \n")	
+									
 					if event.key == K_d: 
 						NumStepsPerPress = NumStepsPerPress + 5
 						print("Increase NumStepsPerPress to: "+str(NumStepsPerPress))	
@@ -481,6 +494,25 @@ def KeyPressThread():
 							NumStepsPerPress = 5
 						print("Decrease NumStepsPerPress to: "+str(NumStepsPerPress))	
 						
+					if event.key == K_e:	# ENTER CUSTOM COMMAND STRING
+						cmd_str = input("Enter your custom command string and press enter: ")
+						CustomCommandString = cmd_str
+						cmd_str = cmd_str + "\n"
+						cmd_str = cmd_str.encode('utf-8')
+						print(cmd_str)
+						RobotSerialController.write(cmd_str)
+						print("^ Running this custom command string. Press 'R' to reverse.")
+						
+					if event.key == K_r:	# REVERSE THE LAST CUSTOM COMMAND STRING
+						cmd_str = ReverseCustomMoveCommand(CustomCommandString, debug_mode=1) # argument will hold the last custom command, by above logic. 
+						# For now we are assuming speeds have been kept constant between the initial cmd and calling its reverse (does this matter for position?)
+						CustomCommandString = cmd_str # for easy testing, allow us to keep reversing back and forth between 2 workspace positions
+						cmd_str = cmd_str + "\n"
+						cmd_str = cmd_str.encode('utf-8')
+						print(cmd_str)
+						RobotSerialController.write(cmd_str)
+						print("^ Running this custom command string. Press 'R' to reverse.")	
+							
 					if event.key == K_t: 
 						if is_recording_motions == 0: 
 							RecordingBufferExplicit = [[],[],[],[]] # reset/clear buffer
@@ -547,7 +579,11 @@ except (KeyboardInterrupt, SystemExit):
 	sys.exit()
 
 is_exit = 0
+
+wrist_cap = cv2.VideoCapture(1)
+
 while True: 
+	# NECK SENSOR
 	if sensor_kinect.has_new_color_frame():
 		t1 = time.time() * 1000
 		c_frame = sensor_kinect.get_last_color_frame()
@@ -577,13 +613,19 @@ while True:
 		else:
 			print("Error: view mode undefined: " + str(VIEW_MODE))
 			break
-			
-		wait_key = (cv2.waitKey(1) & 0xFF)
+	
+	### WRIST SENSOR
+	ret, wrist_frame = wrist_cap.read()
+	if ret==True:
+		wrist_frame = cv2.flip(wrist_frame,0)
+		cv2.imshow("wrist", wrist_frame)
 		
-		if is_exit == 1:
-			break
+		
+	wait_key = (cv2.waitKey(1) & 0xFF)
+		
+	if is_exit == 1:
+		break
 			
-cleanup_stop_thread()
 sys.exit()
 		
 

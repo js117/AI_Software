@@ -1,3 +1,11 @@
+#include <avr_i2c.h>
+#include <clock.h>
+#include <compiler_options.h>
+#include <inv_mpu.h>
+#include <mpu9250.h>
+#include <SparkFunIMU.h>
+#include <twi.h>
+
 
 /* 
     Big Solve Robotics 
