@@ -25,6 +25,14 @@ from pykinect2 import PyKinectRuntime
 import ctypes
 import _ctypes
 
+import array as ARR
+from collections import deque
+import matplotlib
+from matplotlib import pyplot as plt
+from pylab import *
+from pyqtgraph.Qt import QtCore, QtGui
+import pyqtgraph as pg
+
 ############################## IMPORTANT GLOBAL VARIABLES ###############################
 global RobotSerialController
 global baudrate
@@ -47,6 +55,25 @@ global LastRecordedMotionBuffer # for easy replay & reverse
 # 6 - Gripper Open/Close	
 # 7 - Neck Pitch
 
+global IMUSerialControllers
+global NumIMUs
+global baudrate
+global BytesPerBuffer
+global plot_time_axes
+global IMU_BUFFER_SIZE
+global IMU_buffer_roll
+global IMU_buffer_pitch
+global IMU_buffer_yaw
+global IMU_buffer_ax
+global IMU_buffer_ay
+global IMU_buffer_az
+global IMU_buffer_gx
+global IMU_buffer_gy
+global IMU_buffer_gz
+global IMU_buffer_mx
+global IMU_buffer_my
+global IMU_buffer_mz
+
 ### Some initializations: 
 baudrate = 115200
 RobotCurrentJoint = 0
@@ -58,6 +85,26 @@ JointMinSpeed = 10
 JointMaxSpeed = 2500
 NumStepsPerPress = 10
 CustomCommandString = ""
+
+# IMU initializations below
+NumIMUs = 2
+BytesPerBuffer = 13*4 +2		# 13 float values being sent via Arduino, 4 bytes each; plus newline and carriage return (see Arduino code)
+IMUSerialControllers = []
+
+IMU_BUFFER_SIZE = 300
+plot_time_axes = [i for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_roll = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)] 
+IMU_buffer_pitch = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_yaw = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_ax = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_ay = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_az = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_gx = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_gy = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_gz = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_mx = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_my = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_mz = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
 
 #########################################################################################
 
@@ -88,6 +135,80 @@ def serial_ports():
         except (OSError, serial.SerialException):
             pass
     return result
+	
+######################################## INITIAL SERIAL CONNECTIONS #################################################		
+		
+ports = serial_ports()
+print(ports)
+
+'''
+try:
+	print("Connecting to port: "+ports[0])
+	RobotSerialController = serial.Serial(ports[0], baudrate, timeout=3) 
+	print("Successfully connected.")
+	# Programming usage:
+	# 
+	# RobotSerialController.write("serial_cmd_string");
+	for i in range(len(RobotJointSpeeds)):
+		# How this works: e.g. to do "SSA400" to set speed of base rotation (joint 'A' on the controller) to 400; 
+		# Use chr(65+i) to get ASCII string of appropriate letter (65 == 'A' so we start from there)
+		cmd_str = "SS"+chr(65+i)+str(RobotJointSpeeds[i])+"\n"
+		print(cmd_str.encode('utf-8'))
+		RobotSerialController.write(cmd_str.encode('utf-8'))
+		#response = RobotSerialController.read(100) # just for some debugging, since the controller talks back
+		#print(response)
+	
+except:
+	print("Error: could not connect over serial port. Please check that the cable is plugged in. Try unplugging other USB serial devices.")
+	sys.exit()
+'''
+	
+###################################################################
+for i in range(len(ports)):
+	try:
+		print("testing port: " + str(ports[i]))
+		test_port = serial.Serial(ports[i], baudrate, timeout=3)
+		print("connected.")
+		
+		bytes1 = test_port.read(BytesPerBuffer)
+		bytes2 = test_port.read(BytesPerBuffer)
+		bytes3 = test_port.read(BytesPerBuffer)
+		lenb1 = len(bytes1)
+		lenb2 = len(bytes2)
+		lenb3 = len(bytes3)
+		
+		print("------------------")
+		print(bytes1); print("--- len b1: " + str(lenb1))
+		print(bytes2); print("--- len b2: " + str(lenb2))
+		print(bytes3); print("--- len b3: " + str(lenb3))
+		
+		if lenb3 == BytesPerBuffer:
+			print(str(ports[i]) + " is an IMU sensor port.")
+			IMUSerialControllers.append(test_port)
+			print("")
+			
+		else:
+			print("Testing if COM port is Robot Controller: ")
+			for ii in range(len(RobotJointSpeeds)):
+				# How this works: e.g. to do "SSA400" to set speed of base rotation (joint 'A' on the controller) to 400; 
+				# Use chr(65+i) to get ASCII string of appropriate letter (65 == 'A' so we start from there)
+				cmd_str = "SS"+chr(65+ii)+str(RobotJointSpeeds[ii])+"\n"
+				print(cmd_str.encode('utf-8'))
+				test_port.write(cmd_str.encode('utf-8'))
+				response = test_port.readline() # just for some debugging, since the controller talks back
+				print(response)
+				print("------ i: "+str(ii))
+				
+			if response:
+				RobotSerialController = test_port
+				print(str(ports[i]) + " is a Robot Controller port.")
+		print("")
+	
+	except:
+		print("failed to connect to port.")
+	
+	
+######################################## /END/ INITIAL SERIAL CONNECTIONS #################################################			
 	
 def tryIndex(inData, char):
 	res = 0
@@ -256,27 +377,10 @@ def ReplaySavedManualMotion(MotionBuffer, seq_dir=1):
 	else:
 		print("Error: bad seq_dir: "+str(seq_dir))
 
-ports = serial_ports()
-print(ports)
-try:
-	print("Connecting to port: "+ports[0])
-	RobotSerialController = serial.Serial(ports[0], baudrate) 
-	print("Successfully connected.")
-	# Programming usage:
-	# 
-	# RobotSerialController.write("serial_cmd_string");
-	for i in range(len(RobotJointSpeeds)):
-		# How this works: e.g. to do "SSA400" to set speed of base rotation (joint 'A' on the controller) to 400; 
-		# Use chr(65+i) to get ASCII string of appropriate letter (65 == 'A' so we start from there)
-		cmd_str = "SS"+chr(65+i)+str(RobotJointSpeeds[i])+"\n"
-		print(cmd_str.encode('utf-8'))
-		RobotSerialController.write(cmd_str.encode('utf-8'))
-		#response = RobotSerialController.read(100) # just for some debugging, since the controller talks back
-		#print(response)
+		
+		
+
 	
-except:
-	print("Error: could not connect over serial port. Please check that the cable is plugged in. Try unplugging other USB serial devices.")
-	sys.exit()
 	
 sensor_kinect = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth | PyKinectV2.FrameSourceTypes_Infrared)
 WIDTH_color = sensor_kinect.color_frame_desc.Width
@@ -313,7 +417,7 @@ t2 = 0
 
 def KeyPressThread(): 
 	global VIEW_MODE
-	global c_frame
+	global c_framew
 	global d_frame
 	global ir_frame
 	global RobotSerialController
@@ -596,8 +700,8 @@ while True:
 		c_frame_ds = cv2.resize(c_frame, dim, interpolation = cv2.INTER_AREA)
 		
 		d_frame = sensor_kinect.get_last_depth_frame(); d_len = d_frame.shape[0]
-		d_frame = d_frame.reshape(HEIGHT_depth, WIDTH_depth, -1) / 4000
 		
+		d_frame = d_frame.reshape(HEIGHT_depth, WIDTH_depth, -1) / 4000
 		ir_frame = sensor_kinect.get_last_infrared_frame(); ir_len = ir_frame.shape[0]
 		ir_frame = ir_frame.reshape(HEIGHT_ir, WIDTH_ir, -1)
 		

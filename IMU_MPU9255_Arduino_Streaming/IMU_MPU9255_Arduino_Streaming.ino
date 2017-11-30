@@ -3,15 +3,40 @@
 #include "MPU9250.h"
 
 
-
 #define AHRS true         // Set to false for basic data read
-#define SerialDebug true  // Set to true to get Serial output for debugging
+#define SerialDebug false  // Set to true to get Serial output for debugging
 
 MPU9250 myIMU;
 
+float SEND_DATA[13];
+float dev_id;
+
+/*
+ * WIRE COLORS: 11/14/2017
+ * 
+ * Red - VCC
+ * Blu - GND
+ * Yel - SDA
+ * Grn - SCL
+ * 
+ * Hardware setup:
+ MPU9250 Breakout --------- Arduino
+ VDD ---------------------- 3.3V
+ VDDI --------------------- 3.3V
+ SDA ----------------------- A4
+ SCL ----------------------- A5
+ GND ---------------------- GND
+ * 
+ * 
+ */
 
 void setup() {
   // put your setup code here, to run once:
+
+  dev_id = 4; //hard-coding LOL           //(float) (millis()+ random(9999)); //almost certainly won't be the same across boards
+
+  //SEND_DATA = (float*)malloc(12);
+  //for (int i = 0; i < 12; i++) SEND_DATA[i] = 0.0f; 
 
    Wire.begin();
   // TWBR = 12;  // 400 kbit/sec I2C speed
@@ -19,46 +44,49 @@ void setup() {
 
    // Read the WHO_AM_I register, this is a good test of communication
   byte c = myIMU.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);
-  Serial.print("MPU9250 "); Serial.print("I AM "); Serial.print(c, HEX);
-  Serial.print(" I should be "); Serial.println(0x71, HEX);
-
+  if (SerialDebug) {
+    Serial.print("MPU9250 "); Serial.print("I AM "); Serial.print(c, HEX);
+    Serial.print(" I should be "); Serial.println(0x71, HEX);
+  }
   if (c == 0x73) // WHO_AM_I should always be 0x68
   {
-    Serial.println("MPU9250 is online...");
+    //Serial.println("MPU9250 is online...");
 
     // Start by performing self test and reporting values
     myIMU.MPU9250SelfTest(myIMU.SelfTest);
-    Serial.print("x-axis self test: acceleration trim within : ");
-    Serial.print(myIMU.SelfTest[0],1); Serial.println("% of factory value");
-    Serial.print("y-axis self test: acceleration trim within : ");
-    Serial.print(myIMU.SelfTest[1],1); Serial.println("% of factory value");
-    Serial.print("z-axis self test: acceleration trim within : ");
-    Serial.print(myIMU.SelfTest[2],1); Serial.println("% of factory value");
-    Serial.print("x-axis self test: gyration trim within : ");
-    Serial.print(myIMU.SelfTest[3],1); Serial.println("% of factory value");
-    Serial.print("y-axis self test: gyration trim within : ");
-    Serial.print(myIMU.SelfTest[4],1); Serial.println("% of factory value");
-    Serial.print("z-axis self test: gyration trim within : ");
-    Serial.print(myIMU.SelfTest[5],1); Serial.println("% of factory value");
-
+    if (SerialDebug) {
+      Serial.print("x-axis self test: acceleration trim within : ");
+      Serial.print(myIMU.SelfTest[0],1); Serial.println("% of factory value");
+      Serial.print("y-axis self test: acceleration trim within : ");
+      Serial.print(myIMU.SelfTest[1],1); Serial.println("% of factory value");
+      Serial.print("z-axis self test: acceleration trim within : ");
+      Serial.print(myIMU.SelfTest[2],1); Serial.println("% of factory value");
+      Serial.print("x-axis self test: gyration trim within : ");
+      Serial.print(myIMU.SelfTest[3],1); Serial.println("% of factory value");
+      Serial.print("y-axis self test: gyration trim within : ");
+      Serial.print(myIMU.SelfTest[4],1); Serial.println("% of factory value");
+      Serial.print("z-axis self test: gyration trim within : ");
+      Serial.print(myIMU.SelfTest[5],1); Serial.println("% of factory value");
+    }
     // Calibrate gyro and accelerometers, load biases in bias registers
     myIMU.calibrateMPU9250(myIMU.gyroBias, myIMU.accelBias);
 
     myIMU.initMPU9250();
     // Initialize device for active mode read of acclerometer, gyroscope, and
     // temperature
-    Serial.println("MPU9250 initialized for active data mode....");
+    //Serial.println("MPU9250 initialized for active data mode....");
 
     // Read the WHO_AM_I register of the magnetometer, this is a good test of
     // communication
     byte d = myIMU.readByte(AK8963_ADDRESS, WHO_AM_I_AK8963);
-    Serial.print("AK8963 "); Serial.print("I AM "); Serial.print(d, HEX);
-    Serial.print(" I should be "); Serial.println(0x48, HEX);
-
+    if (SerialDebug) {
+      Serial.print("AK8963 "); Serial.print("I AM "); Serial.print(d, HEX);
+      Serial.print(" I should be "); Serial.println(0x48, HEX);
+    }
     // Get magnetometer calibration from AK8963 ROM
     myIMU.initAK8963(myIMU.magCalibration);
     // Initialize device for active mode read of magnetometer
-    Serial.println("AK8963 initialized for active data mode....");
+    //Serial.println("AK8963 initialized for active data mode....");
     if (SerialDebug)
     {
       //  Serial.println("Calibration values: ");
@@ -187,6 +215,7 @@ void loop() {
         Serial.print("Yaw, Pitch, Roll: ");
         Serial.print(myIMU.yaw, 2);
         Serial.print(", ");
+        
         Serial.print(myIMU.pitch, 2);
         Serial.print(", ");
         Serial.println(myIMU.roll, 2);
@@ -196,8 +225,25 @@ void loop() {
         Serial.println(" Hz");
       }
 
+  SEND_DATA[0] = dev_id;
+  SEND_DATA[1] = myIMU.roll;
+  SEND_DATA[2] = myIMU.pitch;
+  SEND_DATA[3] = myIMU.yaw;
+  SEND_DATA[4] = myIMU.ax;
+  SEND_DATA[5] = myIMU.ay;
+  SEND_DATA[6] = myIMU.az;
+  SEND_DATA[7] = myIMU.gx;
+  SEND_DATA[8] = myIMU.gy;
+  SEND_DATA[9] = myIMU.gz;
+  SEND_DATA[10] = myIMU.mx;
+  SEND_DATA[11] = myIMU.my;
+  SEND_DATA[12] = myIMU.mz;
 
+  int test = Serial.write((uint8_t*)SEND_DATA, sizeof(SEND_DATA));
+  Serial.println();
 
+  //Serial.print("------ num bytes sent 1: "); Serial.println(test);
+  //Serial.print("------ num bytes sent 2: "); Serial.println(sizeof(SEND_DATA));
 
 
 

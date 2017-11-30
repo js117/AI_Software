@@ -1,11 +1,3 @@
-#include <avr_i2c.h>
-#include <clock.h>
-#include <compiler_options.h>
-#include <inv_mpu.h>
-#include <mpu9250.h>
-#include <SparkFunIMU.h>
-#include <twi.h>
-
 
 /* 
     Big Solve Robotics 
@@ -212,7 +204,7 @@ void loop() {
       
       if (function == "TT") // "Basic testing"
       {
-        Serial.print("=== "); Serial.print(inData); Serial.println();
+        //Serial.print("=== "); Serial.print(inData); Serial.println();
         int J1start = inData.indexOf('A');
         int J2start = inData.indexOf('B');
         int J3start = inData.indexOf('C');
@@ -357,7 +349,7 @@ void loop() {
       //-----------------------------------------------------------------------
       if (function == "SS")
       {
-        Serial.print("=== "); Serial.print(inData); Serial.println();
+        //Serial.print("=== "); Serial.print(inData); Serial.println();
         int J1start = inData.indexOf('A');
         int J2start = inData.indexOf('B');
         int J3start = inData.indexOf('C');
@@ -378,42 +370,42 @@ void loop() {
         if (J1speed > 0 && J1speed < SPEED_MAX) {
             motorSpeed1 = J1speed;
             D1_Stepper.setSpeed(motorSpeed1);
-            Serial.print("Set driver 1 to speed: "); Serial.println(motorSpeed1);
+            //Serial.println("Set driver 1 to speed: "); Serial.println(motorSpeed1);
         }
         if (J2speed > 0 && J2speed < SPEED_MAX) {
             motorSpeed2 = J2speed;
             D2_Stepper.setSpeed(motorSpeed2);
-            Serial.print("Set driver 2 to speed: "); Serial.println(motorSpeed2);
+            //Serial.println("Set driver 2 to speed: "); Serial.println(motorSpeed2);
         }
         if (J3speed > 0 && J3speed < SPEED_MAX) {
             motorSpeed3 = J3speed;
             D3_Stepper.setSpeed(motorSpeed3);
-            Serial.print("Set driver 3 to speed: "); Serial.println(motorSpeed3);
+            //Serial.println("Set driver 3 to speed: "); Serial.println(motorSpeed3);
         }
         if (J4speed > 0 && J4speed < SPEED_MAX) {
             motorSpeed4 = J4speed;
             D4_Stepper.setSpeed(motorSpeed4);
-            Serial.print("Set driver 4 to speed: "); Serial.println(motorSpeed4);
+            //Serial.println("Set driver 4 to speed: "); Serial.println(motorSpeed4);
         }
         if (J5speed > 0 && J5speed < SPEED_MAX) {
             motorSpeed5 = J5speed;
             D5_Stepper.setSpeed(motorSpeed5);
-            Serial.print("Set driver 5 to speed: "); Serial.println(motorSpeed5);
+            //Serial.println("Set driver 5 to speed: "); Serial.println(motorSpeed5);
         }
         if (J6speed > 0 && J6speed < SPEED_MAX) {
             motorSpeed6 = J6speed;
             D6_Stepper.setSpeed(motorSpeed6);
-            Serial.print("Set driver 6 to speed: "); Serial.println(motorSpeed6);
+            //Serial.println("Set driver 6 to speed: "); Serial.println(motorSpeed6);
         }
         if (J7speed > 0 && J7speed < SPEED_MAX) {
             motorSpeed7 = J7speed;
             D7_Stepper.setSpeed(motorSpeed7);
-            Serial.print("Set driver 7 to speed: "); Serial.println(motorSpeed7);
+            //Serial.println("Set driver 7 to speed: "); Serial.println(motorSpeed7);
         }
         if (J8speed > 0 && J8speed < SPEED_MAX) {
             motorSpeed8 = J8speed;
             D8_Stepper.setSpeed(motorSpeed8);
-            Serial.print("Set driver 8 to speed: "); Serial.println(motorSpeed8);
+            //Serial.println("Set driver 8 to speed: "); Serial.println(motorSpeed8);
         }
 
         // Update step delays: 
@@ -426,22 +418,25 @@ void loop() {
         stepDelay7 = 60.0 * 1000.0 / stepsPerRevolution7 * 1000.0 / motorSpeed7;
         stepDelay8 = 60.0 * 1000.0 / stepsPerRevolution8 * 1000.0 / motorSpeed8;
         
-        Serial.print("motorSpeed1: "); Serial.println(motorSpeed1);
-        Serial.print("motorSpeed2: "); Serial.println(motorSpeed2);
-        Serial.print("motorSpeed3: "); Serial.println(motorSpeed3);
-        Serial.print("motorSpeed4: "); Serial.println(motorSpeed4);
-        Serial.print("motorSpeed5: "); Serial.println(motorSpeed5);
-        Serial.print("motorSpeed6: "); Serial.println(motorSpeed6);
-        Serial.print("motorSpeed7: "); Serial.println(motorSpeed7);
-        Serial.print("motorSpeed8: "); Serial.println(motorSpeed8);
-        Serial.print("stepDelay1: "); Serial.println(stepDelay1);
-        Serial.print("stepDelay2: "); Serial.println(stepDelay2);
-        Serial.print("stepDelay3: "); Serial.println(stepDelay3);
-        Serial.print("stepDelay4: "); Serial.println(stepDelay4);
-        Serial.print("stepDelay5: "); Serial.println(stepDelay5);
-        Serial.print("stepDelay6: "); Serial.println(stepDelay6);
-        Serial.print("stepDelay7: "); Serial.println(stepDelay7);
-        Serial.print("stepDelay8: "); Serial.println(stepDelay8);
+        /*
+         * Serial.println("motorSpeed1: "); Serial.println(motorSpeed1);
+        Serial.println("motorSpeed2: "); Serial.println(motorSpeed2);
+        Serial.println("motorSpeed3: "); Serial.println(motorSpeed3);
+        Serial.println("motorSpeed4: "); Serial.println(motorSpeed4);
+        Serial.println("motorSpeed5: "); Serial.println(motorSpeed5);
+        Serial.println("motorSpeed6: "); Serial.println(motorSpeed6);
+        Serial.println("motorSpeed7: "); Serial.println(motorSpeed7);
+        Serial.println("motorSpeed8: "); Serial.println(motorSpeed8);
+        Serial.println("stepDelay1: "); Serial.println(stepDelay1);
+        Serial.println("stepDelay2: "); Serial.println(stepDelay2);
+        Serial.println("stepDelay3: "); Serial.println(stepDelay3);
+        Serial.println("stepDelay4: "); Serial.println(stepDelay4);
+        Serial.println("stepDelay5: "); Serial.println(stepDelay5);
+        Serial.println("stepDelay6: "); Serial.println(stepDelay6);
+        Serial.println("stepDelay7: "); Serial.println(stepDelay7);
+        Serial.println("stepDelay8: "); Serial.println(stepDelay8);
+        */
+        Serial.println("Set speed successfully.");
         
       }
       
@@ -883,6 +878,7 @@ void loop() {
         
         inData = ""; // Clear recieved buffer
         Serial.write('1'); // This is to tell the controller that we are ready for a new command
+        Serial.println();
         //Serial.print("Move Done");
       }
       else
