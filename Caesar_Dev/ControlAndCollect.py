@@ -12,7 +12,7 @@ import threading
 import msvcrt # WINDOWS ONLY (what does Linux need?)
 import pickle
 
-from camera import Camera
+#from camera import Camera
 from draw import Gravity, put_text
 
 import pygame
@@ -38,6 +38,7 @@ global RobotSerialController
 global baudrate
 global RobotCurrentJoint	# Integer from 1 to 8: 6 robot joints, + gripper, + neck
 global RobotJointSpeeds
+global RobotJointDisplacements # from start of program
 global JointMinSpeed
 global JointMaxSpeed
 global NumStepsPerPress
@@ -73,11 +74,15 @@ global IMU_buffer_gz
 global IMU_buffer_mx
 global IMU_buffer_my
 global IMU_buffer_mz
+global IMU_buffer_time
+global IMU_buffer_index
+global LastIMUReadTime
 
 ### Some initializations: 
 baudrate = 115200
 RobotCurrentJoint = 0
 RobotJointSpeeds = [400, 400, 400, 400, 400, 400, 400, 400]
+RobotJointDisplacements = [0, 0, 0, 0, 0, 0, 0, 0]
 RecordingBufferComposite = [[], [], [], [], [], [], [], [], []] # RecordingBufferComposite[RobotCurrentJoint].append(dir * NumStepsPerPress) for manual user cmds
 RecordingBufferExplicit = [[],[],[],[]] # this one should be easier to use; Buffer[0] is timestamp
 # RecordingBufferExplicit[1].append(RobotCurrentJoint); RecordingBufferExplicit[2].append(dir); RecordingBufferExplicit[3].append(NumStepsPerPress);
@@ -91,7 +96,7 @@ NumIMUs = 2
 BytesPerBuffer = 13*4 +2		# 13 float values being sent via Arduino, 4 bytes each; plus newline and carriage return (see Arduino code)
 IMUSerialControllers = []
 
-IMU_BUFFER_SIZE = 300
+IMU_BUFFER_SIZE = 30
 plot_time_axes = [i for i in range(0,IMU_BUFFER_SIZE)]
 IMU_buffer_roll = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)] 
 IMU_buffer_pitch = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
@@ -105,8 +110,41 @@ IMU_buffer_gz = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
 IMU_buffer_mx = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
 IMU_buffer_my = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
 IMU_buffer_mz = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_time = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_buffer_index = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
 
 #########################################################################################
+
+#################################### GLOBAL RUNTIME VARIABLES; START VISION SENSORS #####################################
+
+global sensor_kinect
+global wrist_cap
+global WIDTH_color
+global HEIGHT_color
+global WIDTH_depth
+global HEIGHT_depth
+global WIDTH_ir
+global HEIGHT_ir
+global RESIZED_WIDTH
+global VIEW_MODE
+global VIEW_MODE_RGB
+global VIEW_MODE_DEPTH
+global VIEW_MODE_IR
+global is_exit
+global is_recording_motions
+global is_recording_composite # records motions and visual data
+global pygame_screen
+global c_frame
+global d_frame
+global ir_frame
+global wrist_frame
+
+is_exit = 0
+
+is_recording_motions = 0
+is_recording_composite = 0
+
+#####################################################################################################################
 
 def serial_ports():
     """ Lists serial port names
@@ -141,29 +179,6 @@ def serial_ports():
 ports = serial_ports()
 print(ports)
 
-'''
-try:
-	print("Connecting to port: "+ports[0])
-	RobotSerialController = serial.Serial(ports[0], baudrate, timeout=3) 
-	print("Successfully connected.")
-	# Programming usage:
-	# 
-	# RobotSerialController.write("serial_cmd_string");
-	for i in range(len(RobotJointSpeeds)):
-		# How this works: e.g. to do "SSA400" to set speed of base rotation (joint 'A' on the controller) to 400; 
-		# Use chr(65+i) to get ASCII string of appropriate letter (65 == 'A' so we start from there)
-		cmd_str = "SS"+chr(65+i)+str(RobotJointSpeeds[i])+"\n"
-		print(cmd_str.encode('utf-8'))
-		RobotSerialController.write(cmd_str.encode('utf-8'))
-		#response = RobotSerialController.read(100) # just for some debugging, since the controller talks back
-		#print(response)
-	
-except:
-	print("Error: could not connect over serial port. Please check that the cable is plugged in. Try unplugging other USB serial devices.")
-	sys.exit()
-'''
-	
-###################################################################
 for i in range(len(ports)):
 	try:
 		print("testing port: " + str(ports[i]))
@@ -377,43 +392,189 @@ def ReplaySavedManualMotion(MotionBuffer, seq_dir=1):
 	else:
 		print("Error: bad seq_dir: "+str(seq_dir))
 
+################################################## IMU CLASSES AND FUNCTIONS ###################################################		
 		
+class App(QtGui.QMainWindow):
+	def __init__(self, parent=None):
+		super(App, self).__init__(parent)
+
+		#### Create Gui Elements ###########
+		self.mainbox = QtGui.QWidget()
+		self.setCentralWidget(self.mainbox)
+		self.mainbox.setLayout(QtGui.QVBoxLayout())
+
+		self.canvas = pg.GraphicsLayoutWidget()
+		self.mainbox.layout().addWidget(self.canvas)
+
+		self.label = QtGui.QLabel()
+		self.mainbox.layout().addWidget(self.label)
+
+		self.view = self.canvas.addViewBox()
+		self.view.setAspectLocked(True)
+		self.view.setRange(QtCore.QRectF(0,0, 100, 100))
+
+		self.numIMUs = len(IMUSerialControllers)
+		self.bufferLength = IMU_BUFFER_SIZE
 		
+		self.otherplot = [[self.canvas.addPlot(row=i,col=0, title="IMU #"+str(i)+" ROLL"),
+						   self.canvas.addPlot(row=i,col=1, title="IMU #"+str(i)+" PITCH"),
+						   self.canvas.addPlot(row=i,col=2, title="IMU #"+str(i)+" YAW")] 
+						   for i in range(0,self.numIMUs)]
+		self.h2 = [[self.otherplot[i][0].plot(pen='r'), self.otherplot[i][1].plot(pen='g'), self.otherplot[i][2].plot(pen='b')] for i in range(0,self.numIMUs)] 
+		self.ydata = [[np.zeros((1,IMU_BUFFER_SIZE)),np.zeros((1,IMU_BUFFER_SIZE)),np.zeros((1,IMU_BUFFER_SIZE))] for i in range(0,self.numIMUs)]
+		
+		for i in range(0,self.numIMUs):
+			self.otherplot[i][0].setYRange(min= -180, max= 180) 
+			self.otherplot[i][1].setYRange(min= -180, max= 180) 
+			self.otherplot[i][2].setYRange(min= -180, max= 180) 
 
+		self.counter = 0
+		self.fps = 0.
+		self.lastupdate = time.time()
+
+		#### Start  #####################
+		self._update()
+
+	def _update(self):
+
+		for i in range(0,self.numIMUs):
+			self.ydata[i][0] = np.array(IMU_buffer_roll[i])
+			self.ydata[i][1] = np.array(IMU_buffer_pitch[i])
+			self.ydata[i][2] = np.array(IMU_buffer_yaw[i])
+			
+			self.h2[i][0].setData(self.ydata[i][0])
+			self.h2[i][1].setData(self.ydata[i][1])
+			self.h2[i][2].setData(self.ydata[i][2])
 	
+		
+		now = time.time()
+		dt = (now-self.lastupdate)
+		if dt <= 0:
+			dt = 0.000000000001
+		fps2 = 1.0 / dt
+		self.lastupdate = now
+		self.fps = self.fps * 0.9 + fps2 * 0.1
+		tx = 'Mean Frame Rate:  {fps:.3f} FPS'.format(fps=self.fps )
+		self.label.setText(tx)
+		QtCore.QTimer.singleShot(1, self._update)
+		self.counter += 1
+		
+def ReadIMUSensorsThread(printmode = 1): # THREAD
+	global IMUSerialControllers
+	global NumIMUs
+	global baudrate
+	global BytesPerBuffer
+	global plot_time_axes
+	global IMU_BUFFER_SIZE
+	global IMU_buffer_roll
+	global IMU_buffer_pitch
+	global IMU_buffer_yaw
+	global IMU_buffer_ax
+	global IMU_buffer_ay
+	global IMU_buffer_az
+	global IMU_buffer_gx
+	global IMU_buffer_gy
+	global IMU_buffer_gz
+	global IMU_buffer_mx
+	global IMU_buffer_my
+	global IMU_buffer_mz
+	global IMU_buffer_time
+	global IMU_buffer_index
+	global LastIMUReadTime
 	
-sensor_kinect = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth | PyKinectV2.FrameSourceTypes_Infrared)
-WIDTH_color = sensor_kinect.color_frame_desc.Width
-HEIGHT_color = sensor_kinect.color_frame_desc.Height
-WIDTH_depth = sensor_kinect.depth_frame_desc.Width
-HEIGHT_depth = sensor_kinect.depth_frame_desc.Height
-WIDTH_ir = sensor_kinect.infrared_frame_desc.Width		# N.B. infrared is for seeing in the dark! 
-HEIGHT_ir = sensor_kinect.infrared_frame_desc.Height
+	imu_data_index = 0
+	curr_time = 0
+	LastIMUReadTime = 0
+	
+	while 1:
+		if is_exit == 1:
+			sys.exit()
+			
+		imu_data_index += 1
+		
+		if printmode == 1:
+			print("-----------------------------------------")
+			curr_time = time.time() * 1000
+			print("Time between IMU reads: "+str(curr_time - LastIMUReadTime))
+		
+		for index,controller in enumerate(IMUSerialControllers): # index is e.g. imu 0, imu 1, ..., imu N-1
+		
+			bytes = controller.readline()
+		
+			if (len(bytes) == BytesPerBuffer):
+			
+				imu_arr = ARR.array('f', bytes[:-2])		# KEY: subtract off the \r\n carriage return and newline final 2 bytes
+				
+				imu_id = imu_arr[0]
+				imu_roll = imu_arr[1]
+				imu_pitch = imu_arr[2]
+				imu_yaw = imu_arr[3]
+				imu_ax = imu_arr[4]
+				imu_ay = imu_arr[5]
+				imu_az = imu_arr[6]
+				'''
+				imu_gx = imu_arr[7]
+				imu_gy = imu_arr[8]
+				imu_gz = imu_arr[9]
+				imu_mx = imu_arr[10]
+				imu_my = imu_arr[11]
+				imu_mz = imu_arr[12]
+				'''
+				IMU_buffer_roll[index].append(imu_roll); IMU_buffer_roll[index].popleft()
+				IMU_buffer_pitch[index].append(imu_pitch); IMU_buffer_pitch[index].popleft()
+				IMU_buffer_yaw[index].append(imu_yaw); IMU_buffer_yaw[index].popleft()
+				IMU_buffer_ax[index].append(imu_ax); IMU_buffer_ax[index].popleft()
+				IMU_buffer_ay[index].append(imu_ay); IMU_buffer_ay[index].popleft()
+				IMU_buffer_az[index].append(imu_az); IMU_buffer_az[index].popleft()
+				IMU_buffer_time[index].append(curr_time); IMU_buffer_time[index].popleft()
+				IMU_buffer_index[index].append(imu_data_index); IMU_buffer_index[index].popleft()
 
-cv2.namedWindow("cam", cv2.WINDOW_NORMAL)
-cv2.namedWindow("wrist", cv2.WINDOW_NORMAL)
+				'''
+				IMU_buffer_gx[index].append(imu_gx); IMU_buffer_gx[index].popleft()
+				IMU_buffer_gy[index].append(imu_gy); IMU_buffer_gy[index].popleft()
+				IMU_buffer_gz[index].append(imu_gz); IMU_buffer_gz[index].popleft()
+				IMU_buffer_mx[index].append(imu_mx); IMU_buffer_mx[index].popleft()
+				IMU_buffer_my[index].append(imu_my); IMU_buffer_my[index].popleft()
+				IMU_buffer_mz[index].append(imu_mz); IMU_buffer_mz[index].popleft()
+				'''
+				if printmode == 1:
+					print(str(imu_id)+" / "+str(imu_data_index)
+									 +" / "+str(round(imu_roll,2))
+									 +" / "+str(round(imu_pitch,2))
+									 +" / "+str(round(imu_yaw,2))
+									 +" / "+str(round(imu_ax,2))
+									 +" / "+str(round(imu_ay,2))
+									 +" / "+str(round(imu_az,2)))
+				
+				'''
+				print("------------------------------------------------------")
+				print("id: " + str(imu_id))
+				print("ROLL: " + str(imu_roll))
+				print("PITCH: " + str(imu_pitch))
+				print("YAW: " + str(imu_yaw))
+				print("AX: " + str(imu_ax))
+				print("AY: " + str(imu_ay))
+				print("AZ: " + str(imu_az))
+				print("GX: " + str(imu_gx))
+				print("GY: " + str(imu_gy))
+				print("GZ: " + str(imu_gz))
+				print("MX: " + str(imu_mx))
+				print("MY: " + str(imu_my))
+				print("MZ: " + str(imu_mz))
+				'''
+		
+		LastIMUReadTime = curr_time
+		
+	
+def IMUGraphingThread():	
+		
+	app1 = QtGui.QApplication(sys.argv)
+	thisapp1 = App()
+	thisapp1.show()
+	
+	sys.exit(app1.exec_())
 
-global is_exit
-global is_recording_motions
-global is_recording_composite # records motions and visual data
-global pygame_screen
-global VIEW_MODE
-global c_frame
-global d_frame
-global ir_frame
-global wrist_frame
-
-VIEW_MODE_RGB = 0
-VIEW_MODE_DEPTH = 1
-VIEW_MODE_IR = 2
-VIEW_MODE = VIEW_MODE_RGB
-
-is_recording_motions = 0
-is_recording_composite = 0
-
-RESIZED_WIDTH = 480.0
-t1 = 0
-t2 = 0
+###############################################################################################################################
 
 def KeyPressThread(): 
 	global VIEW_MODE
@@ -424,6 +585,7 @@ def KeyPressThread():
 	global baudrate
 	global RobotCurrentJoint	# Integer from 1 to 8: 6 robot joints, + gripper, + neck
 	global RobotJointSpeeds
+	global RobotJointDisplacements
 	global JointMinSpeed
 	global JointMaxSpeed
 	global NumStepsPerPress
@@ -459,7 +621,8 @@ def KeyPressThread():
 			cmd_str = "MJ"+chr(65+RobotCurrentJoint)+str("0")+str(NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
 			#print(cmd_str)
 			RobotSerialController.write(cmd_str)
-			print("Manual control - move FORWARDS")
+			#print("Manual control - move FORWARDS")
+			RobotJointDisplacements[RobotCurrentJoint] += NumStepsPerPress
 			
 			state = '0' # Write command to Arduino, set state to 0 until we get response. 
 			# After a write, we should be able to read the updated state from Arduino
@@ -474,12 +637,13 @@ def KeyPressThread():
 				RecordingBufferExplicit[2].append(0) # direction 
 				RecordingBufferExplicit[3].append(NumStepsPerPress)
 				
-		# MOVE BACKWARDS
+		# MOVE BACKWARDS 
 		if keys[pygame.K_w]: #k == ord('w'):
 			cmd_str = "MJ"+chr(65+RobotCurrentJoint)+str("1")+str(NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
 			#print(cmd_str)
 			RobotSerialController.write(cmd_str)
-			print("Manual control - move BACKWARDS")
+			#print("Manual control - move BACKWARDS")
+			RobotJointDisplacements[RobotCurrentJoint] -= NumStepsPerPress
 			
 			state = '0' # Write command to Arduino, set state to 0 until we get response. 
 			# After a write, we should be able to read the updated state from Arduino
@@ -518,6 +682,9 @@ def KeyPressThread():
 						else:
 							print("Error: view mode undefined: " + str(VIEW_MODE))
 							break
+							
+					if event.key == K_b: # PRINT CURRENT DISPLACEMENTS FROM START
+						print(RobotJointDisplacements)
 							
 					if event.key == K_c: # CAPTURE IMAGE
 						timestamp = str(time.time()).replace(".","")
@@ -673,7 +840,110 @@ def KeyPressThread():
 		'''		
 	sys.exit() # if breaking from while loop
 	
+####################################### VISION SENSOR READING ##################################################
+def VisionSensorThread():
 
+	global sensor_kinect
+	global wrist_cap
+	global WIDTH_color
+	global HEIGHT_color
+	global WIDTH_depth
+	global HEIGHT_depth
+	global WIDTH_ir
+	global HEIGHT_ir
+	global RESIZED_WIDTH
+	global VIEW_MODE
+	global VIEW_MODE_RGB
+	global VIEW_MODE_DEPTH
+	global VIEW_MODE_IR
+	global is_exit
+	global is_recording_motions
+	global is_recording_composite # records motions and visual data
+	global pygame_screen
+	global c_frame
+	global d_frame
+	global ir_frame
+	global wrist_frame
+	
+	sensor_kinect = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth | PyKinectV2.FrameSourceTypes_Infrared)
+	WIDTH_color = sensor_kinect.color_frame_desc.Width
+	HEIGHT_color = sensor_kinect.color_frame_desc.Height
+	WIDTH_depth = sensor_kinect.depth_frame_desc.Width
+	HEIGHT_depth = sensor_kinect.depth_frame_desc.Height
+	WIDTH_ir = sensor_kinect.infrared_frame_desc.Width		# N.B. infrared is for seeing in the dark! 
+	HEIGHT_ir = sensor_kinect.infrared_frame_desc.Height
+
+	cv2.namedWindow("cam", cv2.WINDOW_NORMAL)
+	cv2.namedWindow("wrist", cv2.WINDOW_NORMAL)
+
+	VIEW_MODE_RGB = 0
+	VIEW_MODE_DEPTH = 1
+	VIEW_MODE_IR = 2
+	VIEW_MODE = VIEW_MODE_RGB
+	
+	RESIZED_WIDTH = 480.0
+
+	t1 = 0
+	t2 = 0	
+		
+	is_exit = 0
+
+	wrist_cap = cv2.VideoCapture(1)
+
+	while True: 
+		if is_exit == 1:
+			sys.exit()
+		# NECK SENSOR
+		
+		if sensor_kinect.has_new_color_frame():
+		
+			t1 = time.time() * 1000
+			c_frame = sensor_kinect.get_last_color_frame()
+			c_frame = c_frame.reshape(HEIGHT_color, WIDTH_color, -1) 
+			c_frame = c_frame[:,:,0:3] # it's too big
+			#print(c_frame.shape)
+			r = RESIZED_WIDTH / c_frame.shape[0]
+			dim = (int(RESIZED_WIDTH), int(c_frame.shape[1] * r))
+			#print(dim)
+			c_frame_ds = cv2.resize(c_frame, dim, interpolation = cv2.INTER_AREA)
+			
+			d_frame = sensor_kinect.get_last_depth_frame(); d_len = d_frame.shape[0]
+			
+			d_frame = d_frame.reshape(HEIGHT_depth, WIDTH_depth, -1) / 4000
+			ir_frame = sensor_kinect.get_last_infrared_frame(); ir_len = ir_frame.shape[0]
+			ir_frame = ir_frame.reshape(HEIGHT_ir, WIDTH_ir, -1)
+			
+
+			t2 = time.time()*1000 - t1
+			#print(t2)
+			if (VIEW_MODE == VIEW_MODE_RGB):
+				cv2.imshow("cam",c_frame)
+			elif (VIEW_MODE == VIEW_MODE_DEPTH):
+				cv2.imshow("cam",d_frame)
+			elif (VIEW_MODE == VIEW_MODE_IR):
+				cv2.imshow("cam",ir_frame)
+			else:
+				print("Error: view mode undefined: " + str(VIEW_MODE))
+				break
+		
+		### WRIST SENSOR
+		ret, wrist_frame = wrist_cap.read()
+		if ret==True:
+			wrist_frame = cv2.flip(wrist_frame,0)
+			cv2.imshow("wrist", wrist_frame)
+			
+			
+		wait_key = (cv2.waitKey(1) & 0xFF)
+			
+		if is_exit == 1:
+			break
+		
+				
+	sys.exit()
+	
+	
+######################################## START THREADS ###########################################
+	
 keypress_thread = threading.Thread(target=KeyPressThread)
 try:
 	keypress_thread.setDaemon(True)  # important for cleanup ? 
@@ -681,56 +951,46 @@ try:
 except (KeyboardInterrupt, SystemExit):
 	cleanup_stop_thread();
 	sys.exit()
+print("---------- Started keypress thread. ----------")
 
-is_exit = 0
 
-wrist_cap = cv2.VideoCapture(1)
+imu_plotting_thread_1 = threading.Thread(target=IMUGraphingThread)
+try:
+	imu_plotting_thread_1.setDaemon(True) 
+	imu_plotting_thread_1.start() 
+except (KeyboardInterrupt, SystemExit):
+	cleanup_stop_thread();
+	sys.exit()	
+print("---------- Started IMU plotting thread. ----------")
 
-while True: 
-	# NECK SENSOR
-	if sensor_kinect.has_new_color_frame():
-		t1 = time.time() * 1000
-		c_frame = sensor_kinect.get_last_color_frame()
-		c_frame = c_frame.reshape(HEIGHT_color, WIDTH_color, -1) 
-		c_frame = c_frame[:,:,0:3] # it's too big
-		#print(c_frame.shape)
-		r = RESIZED_WIDTH / c_frame.shape[0]
-		dim = (int(RESIZED_WIDTH), int(c_frame.shape[1] * r))
-		#print(dim)
-		c_frame_ds = cv2.resize(c_frame, dim, interpolation = cv2.INTER_AREA)
-		
-		d_frame = sensor_kinect.get_last_depth_frame(); d_len = d_frame.shape[0]
-		
-		d_frame = d_frame.reshape(HEIGHT_depth, WIDTH_depth, -1) / 4000
-		ir_frame = sensor_kinect.get_last_infrared_frame(); ir_len = ir_frame.shape[0]
-		ir_frame = ir_frame.reshape(HEIGHT_ir, WIDTH_ir, -1)
-		
 
-		t2 = time.time()*1000 - t1
-		#print(t2)
-		if (VIEW_MODE == VIEW_MODE_RGB):
-			cv2.imshow("cam",c_frame)
-		elif (VIEW_MODE == VIEW_MODE_DEPTH):
-			cv2.imshow("cam",d_frame)
-		elif (VIEW_MODE == VIEW_MODE_IR):
-			cv2.imshow("cam",ir_frame)
-		else:
-			print("Error: view mode undefined: " + str(VIEW_MODE))
-			break
+imu_reading_thread = threading.Thread(target=ReadIMUSensorsThread(printmode = 0))	
+try:
+	imu_reading_thread.setDaemon(True) 
+	imu_reading_thread.start() 
+except (KeyboardInterrupt, SystemExit):
+	cleanup_stop_thread();
+	sys.exit()
+print("---------- Started IMU reading thread. ----------")	
+
+
+vision_sensor_thread = threading.Thread(target=VisionSensorThread)	
+try:
+	vision_sensor_thread.setDaemon(True) 
+	vision_sensor_thread.start() 
+except (KeyboardInterrupt, SystemExit):
+	cleanup_stop_thread();
+	sys.exit()		
+print("---------- Started Vision Sensors thread. ----------")
+############################################################################################################	
 	
-	### WRIST SENSOR
-	ret, wrist_frame = wrist_cap.read()
-	if ret==True:
-		wrist_frame = cv2.flip(wrist_frame,0)
-		cv2.imshow("wrist", wrist_frame)
-		
-		
-	wait_key = (cv2.waitKey(1) & 0xFF)
-		
-	if is_exit == 1:
-		break
-			
-sys.exit()
+while True:
+    pass
+
+
+
+
+
 		
 
 			

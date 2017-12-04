@@ -33,7 +33,7 @@ float dev_id;
 void setup() {
   // put your setup code here, to run once:
 
-  dev_id = 4; //hard-coding LOL           //(float) (millis()+ random(9999)); //almost certainly won't be the same across boards
+  dev_id = 6; //hard-coding LOL           //(float) (millis()+ random(9999)); //almost certainly won't be the same across boards
 
   //SEND_DATA = (float*)malloc(12);
   //for (int i = 0; i < 12; i++) SEND_DATA[i] = 0.0f; 

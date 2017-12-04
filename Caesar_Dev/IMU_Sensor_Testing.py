@@ -164,10 +164,6 @@ class App(QtGui.QMainWindow):
 		self.view.setAspectLocked(True)
 		self.view.setRange(QtCore.QRectF(0,0, 100, 100))
 
-		#  image plot
-		#self.img = pg.ImageItem(border='w')
-		#self.view.addItem(self.img)
-		
 		self.numIMUs = len(IMUSerialControllers)
 		self.bufferLength = IMU_BUFFER_SIZE
 		
@@ -178,39 +174,10 @@ class App(QtGui.QMainWindow):
 		self.h2 = [[self.otherplot[i][0].plot(pen='r'), self.otherplot[i][1].plot(pen='g'), self.otherplot[i][2].plot(pen='b')] for i in range(0,self.numIMUs)] 
 		self.ydata = [[np.zeros((1,IMU_BUFFER_SIZE)),np.zeros((1,IMU_BUFFER_SIZE)),np.zeros((1,IMU_BUFFER_SIZE))] for i in range(0,self.numIMUs)]
 		
-		
 		for i in range(0,self.numIMUs):
 			self.otherplot[i][0].setYRange(min= -180, max= 180) 
 			self.otherplot[i][1].setYRange(min= -180, max= 180) 
 			self.otherplot[i][2].setYRange(min= -180, max= 180) 
-
-
-
-
-		'''
-		self.canvas.nextRow()
-		#  line plot
-		self.otherplot = self.canvas.addPlot()
-		self.h2 = self.otherplot.plot(pen='y')
-		
-		self.canvas.nextRow()
-		self.otherplot_2 = self.canvas.addPlot()
-		self.h2_2 = self.otherplot_2.plot(pen='y')
-		
-		self.canvas.nextRow()
-		self.otherplot_3 = self.canvas.addPlot()
-		self.h2_3 = self.otherplot_3.plot(pen='y')
-		
-		self.canvas.nextRow()
-		self.otherplot_4 = self.canvas.addPlot()
-		self.h2_4 = self.otherplot_4.plot(pen='y')
-		'''
-
-
-		#### Set Data  #####################
-
-		#self.x = np.linspace(0,50., num=100)
-		#self.X,self.Y = np.meshgrid(self.x,self.x)
 
 		self.counter = 0
 		self.fps = 0.
@@ -222,34 +189,14 @@ class App(QtGui.QMainWindow):
 	def _update(self):
 
 		for i in range(0,self.numIMUs):
-			self.ydata[i][0] = np.array(IMU_buffer_roll[i])
-			self.ydata[i][1] = np.array(IMU_buffer_pitch[i])
-			self.ydata[i][2] = np.array(IMU_buffer_yaw[i])
+			self.ydata[i][0] = np.array(IMU_buffer_ax[i])	# roll
+			self.ydata[i][1] = np.array(IMU_buffer_ay[i])	# pitch
+			self.ydata[i][2] = np.array(IMU_buffer_az[i])	# yaw
 			
 			self.h2[i][0].setData(self.ydata[i][0])
 			self.h2[i][1].setData(self.ydata[i][1])
 			self.h2[i][2].setData(self.ydata[i][2])
 	
-		'''
-		self.data = np.sin(self.X/3.+self.counter/9.)*np.cos(self.Y/3.+self.counter/9.)
-		self.ydata = np.sin(self.x/3.+ self.counter/9.)
-		
-		self.ydata_2 = np.sin(self.x/3.+ self.counter/9.)
-		
-		self.ydata_3 = np.sin(self.x/3.+ self.counter/9.)
-		
-		self.ydata_4 = np.sin(self.x/3.+ self.counter/9.)
-
-		#self.img.setImage(self.data)
-		
-		self.h2.setData(self.ydata)
-		
-		self.h2_2.setData(self.ydata_2)
-		
-		self.h2_3.setData(self.ydata_3)
-		
-		self.h2_4.setData(self.ydata_4)
-		'''
 		
 		now = time.time()
 		dt = (now-self.lastupdate)
