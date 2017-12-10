@@ -81,14 +81,14 @@ global LastIMUReadTime
 ### Some initializations: 
 baudrate = 115200
 RobotCurrentJoint = 0
-RobotJointSpeeds = [400, 400, 400, 400, 400, 400, 400, 400]
+RobotJointSpeeds = [800, 800, 800, 800, 800, 800, 800, 800]
 RobotJointDisplacements = [0, 0, 0, 0, 0, 0, 0, 0]
 RecordingBufferComposite = [[], [], [], [], [], [], [], [], []] # RecordingBufferComposite[RobotCurrentJoint].append(dir * NumStepsPerPress) for manual user cmds
 RecordingBufferExplicit = [[],[],[],[]] # this one should be easier to use; Buffer[0] is timestamp
 # RecordingBufferExplicit[1].append(RobotCurrentJoint); RecordingBufferExplicit[2].append(dir); RecordingBufferExplicit[3].append(NumStepsPerPress);
 JointMinSpeed = 10
 JointMaxSpeed = 2500
-NumStepsPerPress = 10
+NumStepsPerPress = 40
 CustomCommandString = ""
 
 # IMU initializations below
@@ -459,7 +459,7 @@ class App(QtGui.QMainWindow):
 		QtCore.QTimer.singleShot(1, self._update)
 		self.counter += 1
 		
-def ReadIMUSensorsThread(printmode = 1): # THREAD
+def ReadIMUSensorsThread(): # THREAD
 	global IMUSerialControllers
 	global NumIMUs
 	global baudrate
@@ -486,9 +486,11 @@ def ReadIMUSensorsThread(printmode = 1): # THREAD
 	curr_time = 0
 	LastIMUReadTime = 0
 	
+	printmode = 1
+	
 	while 1:
 		if is_exit == 1:
-			sys.exit()
+			break
 			
 		imu_data_index += 1
 		
@@ -496,6 +498,7 @@ def ReadIMUSensorsThread(printmode = 1): # THREAD
 			print("-----------------------------------------")
 			curr_time = time.time() * 1000
 			print("Time between IMU reads: "+str(curr_time - LastIMUReadTime))
+		
 		
 		for index,controller in enumerate(IMUSerialControllers): # index is e.g. imu 0, imu 1, ..., imu N-1
 		
@@ -512,14 +515,14 @@ def ReadIMUSensorsThread(printmode = 1): # THREAD
 				imu_ax = imu_arr[4]
 				imu_ay = imu_arr[5]
 				imu_az = imu_arr[6]
-				'''
-				imu_gx = imu_arr[7]
-				imu_gy = imu_arr[8]
-				imu_gz = imu_arr[9]
-				imu_mx = imu_arr[10]
-				imu_my = imu_arr[11]
-				imu_mz = imu_arr[12]
-				'''
+				
+				#imu_gx = imu_arr[7]
+				#imu_gy = imu_arr[8]
+				#imu_gz = imu_arr[9]
+				#imu_mx = imu_arr[10]
+				#imu_my = imu_arr[11]
+				#imu_mz = imu_arr[12]
+				
 				IMU_buffer_roll[index].append(imu_roll); IMU_buffer_roll[index].popleft()
 				IMU_buffer_pitch[index].append(imu_pitch); IMU_buffer_pitch[index].popleft()
 				IMU_buffer_yaw[index].append(imu_yaw); IMU_buffer_yaw[index].popleft()
@@ -529,14 +532,14 @@ def ReadIMUSensorsThread(printmode = 1): # THREAD
 				IMU_buffer_time[index].append(curr_time); IMU_buffer_time[index].popleft()
 				IMU_buffer_index[index].append(imu_data_index); IMU_buffer_index[index].popleft()
 
-				'''
-				IMU_buffer_gx[index].append(imu_gx); IMU_buffer_gx[index].popleft()
-				IMU_buffer_gy[index].append(imu_gy); IMU_buffer_gy[index].popleft()
-				IMU_buffer_gz[index].append(imu_gz); IMU_buffer_gz[index].popleft()
-				IMU_buffer_mx[index].append(imu_mx); IMU_buffer_mx[index].popleft()
-				IMU_buffer_my[index].append(imu_my); IMU_buffer_my[index].popleft()
-				IMU_buffer_mz[index].append(imu_mz); IMU_buffer_mz[index].popleft()
-				'''
+				
+				#IMU_buffer_gx[index].append(imu_gx); IMU_buffer_gx[index].popleft()
+				#IMU_buffer_gy[index].append(imu_gy); IMU_buffer_gy[index].popleft()
+				#IMU_buffer_gz[index].append(imu_gz); IMU_buffer_gz[index].popleft()
+				#IMU_buffer_mx[index].append(imu_mx); IMU_buffer_mx[index].popleft()
+				#IMU_buffer_my[index].append(imu_my); IMU_buffer_my[index].popleft()
+				#IMU_buffer_mz[index].append(imu_mz); IMU_buffer_mz[index].popleft()
+				
 				if printmode == 1:
 					print(str(imu_id)+" / "+str(imu_data_index)
 									 +" / "+str(round(imu_roll,2))
@@ -546,22 +549,22 @@ def ReadIMUSensorsThread(printmode = 1): # THREAD
 									 +" / "+str(round(imu_ay,2))
 									 +" / "+str(round(imu_az,2)))
 				
-				'''
-				print("------------------------------------------------------")
-				print("id: " + str(imu_id))
-				print("ROLL: " + str(imu_roll))
-				print("PITCH: " + str(imu_pitch))
-				print("YAW: " + str(imu_yaw))
-				print("AX: " + str(imu_ax))
-				print("AY: " + str(imu_ay))
-				print("AZ: " + str(imu_az))
-				print("GX: " + str(imu_gx))
-				print("GY: " + str(imu_gy))
-				print("GZ: " + str(imu_gz))
-				print("MX: " + str(imu_mx))
-				print("MY: " + str(imu_my))
-				print("MZ: " + str(imu_mz))
-				'''
+				
+				#print("------------------------------------------------------")
+				#print("id: " + str(imu_id))
+				#print("ROLL: " + str(imu_roll))
+				#print("PITCH: " + str(imu_pitch))
+				#print("YAW: " + str(imu_yaw))
+				#print("AX: " + str(imu_ax))
+				#print("AY: " + str(imu_ay))
+				#print("AZ: " + str(imu_az))
+				#print("GX: " + str(imu_gx))
+				#print("GY: " + str(imu_gy))
+				#print("GZ: " + str(imu_gz))
+				#print("MX: " + str(imu_mx))
+				#print("MY: " + str(imu_my))
+				#print("MZ: " + str(imu_mz))
+				
 		
 		LastIMUReadTime = curr_time
 		
@@ -892,7 +895,7 @@ def VisionSensorThread():
 
 	while True: 
 		if is_exit == 1:
-			sys.exit()
+			break
 		# NECK SENSOR
 		
 		if sensor_kinect.has_new_color_frame():
@@ -964,7 +967,8 @@ except (KeyboardInterrupt, SystemExit):
 print("---------- Started IMU plotting thread. ----------")
 
 
-imu_reading_thread = threading.Thread(target=ReadIMUSensorsThread(printmode = 0))	
+
+imu_reading_thread = threading.Thread(target=ReadIMUSensorsThread)	
 try:
 	imu_reading_thread.setDaemon(True) 
 	imu_reading_thread.start() 
@@ -974,6 +978,7 @@ except (KeyboardInterrupt, SystemExit):
 print("---------- Started IMU reading thread. ----------")	
 
 
+'''
 vision_sensor_thread = threading.Thread(target=VisionSensorThread)	
 try:
 	vision_sensor_thread.setDaemon(True) 
@@ -982,11 +987,85 @@ except (KeyboardInterrupt, SystemExit):
 	cleanup_stop_thread();
 	sys.exit()		
 print("---------- Started Vision Sensors thread. ----------")
-############################################################################################################	
-	
-while True:
-    pass
+'''
 
+############################################################################################################	
+
+sensor_kinect = PyKinectRuntime.PyKinectRuntime(PyKinectV2.FrameSourceTypes_Color | PyKinectV2.FrameSourceTypes_Depth | PyKinectV2.FrameSourceTypes_Infrared)
+WIDTH_color = sensor_kinect.color_frame_desc.Width
+HEIGHT_color = sensor_kinect.color_frame_desc.Height
+WIDTH_depth = sensor_kinect.depth_frame_desc.Width
+HEIGHT_depth = sensor_kinect.depth_frame_desc.Height
+WIDTH_ir = sensor_kinect.infrared_frame_desc.Width		# N.B. infrared is for seeing in the dark! 
+HEIGHT_ir = sensor_kinect.infrared_frame_desc.Height
+
+cv2.namedWindow("cam", cv2.WINDOW_NORMAL)
+cv2.namedWindow("wrist", cv2.WINDOW_NORMAL)
+
+VIEW_MODE_RGB = 0
+VIEW_MODE_DEPTH = 1
+VIEW_MODE_IR = 2
+VIEW_MODE = VIEW_MODE_RGB
+
+RESIZED_WIDTH = 480.0
+
+t1 = 0
+t2 = 0	
+	
+is_exit = 0
+
+wrist_cap = cv2.VideoCapture(1)
+
+while True: 
+	if is_exit == 1:
+		break
+	# NECK SENSOR
+	
+	if sensor_kinect.has_new_color_frame():
+	
+		t1 = time.time() * 1000
+		c_frame = sensor_kinect.get_last_color_frame()
+		c_frame = c_frame.reshape(HEIGHT_color, WIDTH_color, -1) 
+		c_frame = c_frame[:,:,0:3] # it's too big
+		#print(c_frame.shape)
+		r = RESIZED_WIDTH / c_frame.shape[0]
+		dim = (int(RESIZED_WIDTH), int(c_frame.shape[1] * r))
+		#print(dim)
+		c_frame_ds = cv2.resize(c_frame, dim, interpolation = cv2.INTER_AREA)
+		
+		d_frame = sensor_kinect.get_last_depth_frame(); d_len = d_frame.shape[0]
+		
+		d_frame = d_frame.reshape(HEIGHT_depth, WIDTH_depth, -1) / 4000
+		ir_frame = sensor_kinect.get_last_infrared_frame(); ir_len = ir_frame.shape[0]
+		ir_frame = ir_frame.reshape(HEIGHT_ir, WIDTH_ir, -1)
+		
+
+		t2 = time.time()*1000 - t1
+		#print(t2)
+		if (VIEW_MODE == VIEW_MODE_RGB):
+			cv2.imshow("cam",c_frame)
+		elif (VIEW_MODE == VIEW_MODE_DEPTH):
+			cv2.imshow("cam",d_frame)
+		elif (VIEW_MODE == VIEW_MODE_IR):
+			cv2.imshow("cam",ir_frame)
+		else:
+			print("Error: view mode undefined: " + str(VIEW_MODE))
+			break
+	
+	### WRIST SENSOR
+	ret, wrist_frame = wrist_cap.read()
+	if ret==True:
+		wrist_frame = cv2.flip(wrist_frame,0)
+		cv2.imshow("wrist", wrist_frame)
+		
+		
+	wait_key = (cv2.waitKey(1) & 0xFF)
+		
+	if is_exit == 1:
+		break
+	
+			
+sys.exit()
 
 
 
