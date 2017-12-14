@@ -43,8 +43,8 @@ global JointMinSpeed
 global JointMaxSpeed
 global NumStepsPerPress
 global CustomCommandString
-global RecordingBufferComposite
 global RecordingBufferExplicit
+global MOTION_BUFFER_LOADED
 global LastRecordedMotionBuffer # for easy replay & reverse
 # Joint Name/Description by array index:		
 # 0 - Base Rotation	
@@ -62,29 +62,40 @@ global baudrate
 global BytesPerBuffer
 global plot_time_axes
 global IMU_BUFFER_SIZE
-global IMU_buffer_roll
-global IMU_buffer_pitch
-global IMU_buffer_yaw
-global IMU_buffer_ax
-global IMU_buffer_ay
-global IMU_buffer_az
-global IMU_buffer_gx
-global IMU_buffer_gy
-global IMU_buffer_gz
-global IMU_buffer_mx
-global IMU_buffer_my
-global IMU_buffer_mz
+global IMU_buffer_roll, IMU_last_roll
+global IMU_buffer_pitch, IMU_last_pitch
+global IMU_buffer_yaw, IMU_last_yaw
+global IMU_buffer_ax, IMU_last_ax
+global IMU_buffer_ay, IMU_last_ay
+global IMU_buffer_az, IMU_last_az
+global IMU_buffer_gx, IMU_last_gx
+global IMU_buffer_gy, IMU_last_gy
+global IMU_buffer_gz, IMU_last_gz
+global IMU_buffer_mx, IMU_last_mx
+global IMU_buffer_my, IMU_last_my
+global IMU_buffer_mz, IMU_last_mz
+global IMU1_last_reading, IMU2_last_reading, IMU3_last_reading, IMU4_last_reading, IMU5_last_reading, IMU6_last_reading
 global IMU_buffer_time
 global IMU_buffer_index
+global IMU_REFERENCE
 global LastIMUReadTime
 
 ### Some initializations: 
 baudrate = 115200
 RobotCurrentJoint = 0
-RobotJointSpeeds = [800, 800, 800, 800, 800, 800, 800, 800]
-RobotJointDisplacements = [0, 0, 0, 0, 0, 0, 0, 0]
+RobotJointSpeeds = [600, 600, 600, 600, 600, 600, 600, 600]
+RobotJointDisplacements = [0, 0, 0, 0, 0, 0, 0, 0] 
 RecordingBufferComposite = [[], [], [], [], [], [], [], [], []] # RecordingBufferComposite[RobotCurrentJoint].append(dir * NumStepsPerPress) for manual user cmds
-RecordingBufferExplicit = [[],[],[],[]] # this one should be easier to use; Buffer[0] is timestamp
+# RecordingBufferExplicit:
+# [0] - timestamp
+# [1] - joint
+# [2] - direction
+# [3] - numsteps 
+# [4] / [5] / [6] / [7] / [8] / [9] - IMU data as lists for IMUs indexed 1,2,3,4,5,6. Lists are: [roll / pitch / yaw / accX / accY / accZ]
+# [10] / [11] / [12] - kinect neck images: c_frame_ds, d_frame, ir_frame, wrist_frame
+RecordingBufferExplicit = [[],[],[],[], 		 # timestamp, joint, direction, numsteps
+						   [],[],[],[],[],[],[],
+						   [],[],[],[]] # 
 # RecordingBufferExplicit[1].append(RobotCurrentJoint); RecordingBufferExplicit[2].append(dir); RecordingBufferExplicit[3].append(NumStepsPerPress);
 JointMinSpeed = 10
 JointMaxSpeed = 2500
@@ -112,6 +123,7 @@ IMU_buffer_my = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
 IMU_buffer_mz = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
 IMU_buffer_time = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
 IMU_buffer_index = [deque([0] * IMU_BUFFER_SIZE) for i in range(0,IMU_BUFFER_SIZE)]
+IMU_REFERENCE = [[[0]*6] * 6] # r/p/y/ax/ay/az for 6 IMUs; initialize to zeros
 
 #########################################################################################
 
@@ -134,7 +146,7 @@ global is_exit
 global is_recording_motions
 global is_recording_composite # records motions and visual data
 global pygame_screen
-global c_frame
+global c_frame, c_frame_ds
 global d_frame
 global ir_frame
 global wrist_frame
@@ -360,7 +372,11 @@ def ReplaySavedManualMotion(MotionBuffer, seq_dir=1):
 			currentJoint = MotionBuffer[1][t]
 			currentDir = MotionBuffer[2][t]
 			currentSteps = MotionBuffer[3][t]
-			cmd_str = "MJ"+chr(65+currentJoint)+str(currentDir)+str(currentSteps)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			cmd_str = ""
+			if currentJoint <= 7:
+				cmd_str = "MJ"+chr(65+currentJoint)+str(currentDir)+str(currentSteps)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			elif currentJoint == 8:
+				cmd_str = "MJZ1"+'B'+str(currentDir)+str(currentSteps)+'C'+str(currentDir)+str(2*currentSteps)+"\n"; cmd_str = cmd_str.encode('utf-8')
 			RobotSerialController.write(cmd_str)
 			state = '0' # Write command to Arduino, set state to 0 until we get response. 
 			# After a write, we should be able to read the updated state from Arduino
@@ -381,7 +397,11 @@ def ReplaySavedManualMotion(MotionBuffer, seq_dir=1):
 				print("Error in recorded direction: " + str(currentDir))
 				return
 			currentSteps = MotionBuffer[3][t]
-			cmd_str = "MJ"+chr(65+currentJoint)+str(newDir)+str(currentSteps)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			cmd_str = ""
+			if currentJoint <= 7:
+				cmd_str = "MJ"+chr(65+currentJoint)+str(newDir)+str(currentSteps)+"\n"; cmd_str = cmd_str.encode('utf-8')
+			elif currentJoint == 8:
+				cmd_str = "MJZ1"+'B'+str(newDir)+str(currentSteps)+'C'+str(newDir)+str(2*currentSteps)+"\n"; cmd_str = cmd_str.encode('utf-8')
 			RobotSerialController.write(cmd_str)
 			state = '0' # Write command to Arduino, set state to 0 until we get response. 
 			# After a write, we should be able to read the updated state from Arduino
@@ -486,7 +506,7 @@ def ReadIMUSensorsThread(): # THREAD
 	curr_time = 0
 	LastIMUReadTime = 0
 	
-	printmode = 1
+	printmode = 0
 	
 	while 1:
 		if is_exit == 1:
@@ -567,8 +587,51 @@ def ReadIMUSensorsThread(): # THREAD
 				
 		
 		LastIMUReadTime = curr_time
-		
+
+def GetIMUvalsNOW():
+	global IMUSerialControllers
+	global NumIMUs
+	global baudrate
+	global BytesPerBuffer
 	
+	IMU1data = [[],[],[],[],[],[]]
+	IMU2data = [[],[],[],[],[],[]]
+	IMU3data = [[],[],[],[],[],[]]
+	IMU4data = [[],[],[],[],[],[]]
+	IMU5data = [[],[],[],[],[],[]]
+	IMU6data = [[],[],[],[],[],[]]
+	
+	for index,controller in enumerate(IMUSerialControllers): # index is e.g. imu 0, imu 1, ..., imu N-1
+		
+			bytes = controller.readline()
+		
+			if (len(bytes) == BytesPerBuffer):
+			
+				imu_arr = ARR.array('f', bytes[:-2])		# KEY: subtract off the \r\n carriage return and newline final 2 bytes
+				
+				imu_id = imu_arr[0]
+				imu_roll = imu_arr[1]
+				imu_pitch = imu_arr[2]
+				imu_yaw = imu_arr[3]
+				imu_ax = imu_arr[4]
+				imu_ay = imu_arr[5]
+				imu_az = imu_arr[6]
+				
+				if imu_id == 1: 
+					IMU1data = [imu_roll, imu_pitch, imu_yaw, imu_ax, imu_ay, imu_az]
+				elif imu_id == 2: 
+					IMU2data = [imu_roll, imu_pitch, imu_yaw, imu_ax, imu_ay, imu_az]
+				elif imu_id == 3: 
+					IMU3data = [imu_roll, imu_pitch, imu_yaw, imu_ax, imu_ay, imu_az]
+				elif imu_id == 4: 
+					IMU4data = [imu_roll, imu_pitch, imu_yaw, imu_ax, imu_ay, imu_az]
+				elif imu_id == 5: 
+					IMU5data = [imu_roll, imu_pitch, imu_yaw, imu_ax, imu_ay, imu_az]
+				elif imu_id == 6: 
+					IMU6data = [imu_roll, imu_pitch, imu_yaw, imu_ax, imu_ay, imu_az]
+
+	return IMU1data, IMU2data, IMU3data, IMU4data, IMU5data, IMU6data
+					
 def IMUGraphingThread():	
 		
 	app1 = QtGui.QApplication(sys.argv)
@@ -601,7 +664,7 @@ def KeyPressThread():
 	last_reverse_dir = -1
 	
 	pygame.init() 
-	pygame_screen = pygame.display.set_mode((600, 450)) # this square corresponds to size of img we capture
+	pygame_screen = pygame.display.set_mode((800, 600)) # this square corresponds to size of img we capture
 	instructions_img = pygame.image.load('instructions_j1.jpg')
 	
 	state = '0' # for interacting with Arduino for serial commands
@@ -620,46 +683,136 @@ def KeyPressThread():
 		# Doing it this way below gets "FAST KEYS", i.e. lots of responses if touched/held
 		
 		# MOVE FORWARDS
-		if keys[pygame.K_q]: 
-			cmd_str = "MJ"+chr(65+RobotCurrentJoint)+str("0")+str(NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
-			#print(cmd_str)
-			RobotSerialController.write(cmd_str)
-			#print("Manual control - move FORWARDS")
-			RobotJointDisplacements[RobotCurrentJoint] += NumStepsPerPress
+		if keys[pygame.K_q]:
+		
+			currDirection = 0
 			
-			state = '0' # Write command to Arduino, set state to 0 until we get response. 
-			# After a write, we should be able to read the updated state from Arduino
-			while state == '0': # Wait for Arduino to be ready
-				RobotSerialController.flushInput() # Clear input buffer
-				state = str(RobotSerialController.read())
+			if RobotCurrentJoint <= 7:
+				cmd_str = "MJ"+chr(65+RobotCurrentJoint)+str(currDirection)+str(NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
+				#print(cmd_str)
+				RobotSerialController.write(cmd_str)
+				#print("Manual control - move FORWARDS")
+				RobotJointDisplacements[RobotCurrentJoint] += NumStepsPerPress
+				
+				state = '0' # Write command to Arduino, set state to 0 until we get response. 
+				# After a write, we should be able to read the updated state from Arduino
+				while state == '0': # Wait for Arduino to be ready
+					RobotSerialController.flushInput() # Clear input buffer
+					state = str(RobotSerialController.read())
+					
+			if RobotCurrentJoint == 8:
+				cmd_str = "MJZ1"+'B'+str(currDirection)+str(NumStepsPerPress)+'C'+str(currDirection)+str(2*NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
+				RobotSerialController.write(cmd_str)
+				RobotJointDisplacements[1] += NumStepsPerPress # shoulder pitch
+				RobotJointDisplacements[2] += 2*NumStepsPerPress # elbow pitch
+				
+				print("DEBUG - executed composite move for numsteps")
+				print("DEBUG - "+str(cmd_str))
+				
+				state = '0' # Write command to Arduino, set state to 0 until we get response. 
+				# After a write, we should be able to read the updated state from Arduino
+				while state == '0': # Wait for Arduino to be ready
+					RobotSerialController.flushInput() # Clear input buffer
+					state = str(RobotSerialController.read())
 			
 			if is_recording_motions == 1:
+				# RecordingBufferExplicit:
+				# [0] - timestamp
+				# [1] - joint
+				# [2] - direction
+				# [3] - numsteps 
+				# [4] / [5] / [6] / [7] / [8] / [9] - IMU data as lists for IMUs indexed 1,2,3,4,5,6. Lists are: [roll / pitch / yaw / accX / accY / accZ]
+				# [10] / [11] / [12] - kinect neck images: c_frame_ds, d_frame, ir_frame, wrist_frame
+				
 				timestamp = time.time() * 1000
+				
+				# MOTION COMMAND
 				RecordingBufferExplicit[0].append(timestamp)
 				RecordingBufferExplicit[1].append(RobotCurrentJoint)
-				RecordingBufferExplicit[2].append(0) # direction 
+				RecordingBufferExplicit[2].append(currDirection) # direction 
 				RecordingBufferExplicit[3].append(NumStepsPerPress)
 				
+				# IMU DATA
+				IMU1data, IMU2data, IMU3data, IMU4data, IMU5data, IMU6data = GetIMUvalsNOW()
+				RecordingBufferExplicit[4].append(IMU1data)
+				RecordingBufferExplicit[5].append(IMU2data)
+				RecordingBufferExplicit[6].append(IMU3data)
+				RecordingBufferExplicit[7].append(IMU4data)
+				RecordingBufferExplicit[8].append(IMU5data)
+				RecordingBufferExplicit[9].append(IMU6data)
+				
+				# VISION DATA
+				RecordingBufferExplicit[10].append(c_frame_ds)
+				RecordingBufferExplicit[11].append(d_frame)
+				RecordingBufferExplicit[12].append(ir_frame)
+				RecordingBufferExplicit[13].append(wrist_frame)
+				
+					
+				
+				
 		# MOVE BACKWARDS 
-		if keys[pygame.K_w]: #k == ord('w'):
-			cmd_str = "MJ"+chr(65+RobotCurrentJoint)+str("1")+str(NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
-			#print(cmd_str)
-			RobotSerialController.write(cmd_str)
-			#print("Manual control - move BACKWARDS")
-			RobotJointDisplacements[RobotCurrentJoint] -= NumStepsPerPress
+		if keys[pygame.K_w]: 
+		
+			currDirection = 1
 			
-			state = '0' # Write command to Arduino, set state to 0 until we get response. 
-			# After a write, we should be able to read the updated state from Arduino
-			while state == '0': # Wait for Arduino to be ready
-				RobotSerialController.flushInput() # Clear input buffer
-				state = str(RobotSerialController.read())
+			if RobotCurrentJoint <= 7:
+				cmd_str = "MJ"+chr(65+RobotCurrentJoint)+str(currDirection)+str(NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
+				#print(cmd_str)
+				RobotSerialController.write(cmd_str)
+				#print("Manual control - move BACKWARDS")
+				RobotJointDisplacements[RobotCurrentJoint] -= NumStepsPerPress
+				
+				state = '0' # Write command to Arduino, set state to 0 until we get response. 
+				# After a write, we should be able to read the updated state from Arduino
+				while state == '0': # Wait for Arduino to be ready
+					RobotSerialController.flushInput() # Clear input buffer
+					state = str(RobotSerialController.read())
+			
+			if RobotCurrentJoint == 8:
+				cmd_str = "MJZ1"+'B'+str(currDirection)+str(NumStepsPerPress)+'C'+str(currDirection)+str(2*NumStepsPerPress)+"\n"; cmd_str = cmd_str.encode('utf-8')
+				RobotSerialController.write(cmd_str)
+				RobotJointDisplacements[1] -= NumStepsPerPress # shoulder pitch
+				RobotJointDisplacements[2] -= 2*NumStepsPerPress # elbow pitch
+				
+				state = '0' # Write command to Arduino, set state to 0 until we get response. 
+				# After a write, we should be able to read the updated state from Arduino
+				while state == '0': # Wait for Arduino to be ready
+					RobotSerialController.flushInput() # Clear input buffer
+					state = str(RobotSerialController.read())
 			
 			if is_recording_motions == 1:
+				# RecordingBufferExplicit:
+				# [0] - timestamp
+				# [1] - joint
+				# [2] - direction
+				# [3] - numsteps 
+				# [4] / [5] / [6] / [7] / [8] / [9] - IMU data as lists for IMUs indexed 1,2,3,4,5,6. Lists are: [roll / pitch / yaw / accX / accY / accZ]
+				# [10] / [11] / [12] - kinect neck images: c_frame_ds, d_frame, ir_frame, wrist_frame
+				
 				timestamp = time.time() * 1000
+				
+				# MOTION COMMAND
 				RecordingBufferExplicit[0].append(timestamp)
 				RecordingBufferExplicit[1].append(RobotCurrentJoint)
-				RecordingBufferExplicit[2].append(1) # direction 
+				RecordingBufferExplicit[2].append(currDirection) # direction 
 				RecordingBufferExplicit[3].append(NumStepsPerPress)
+				
+				# IMU DATA
+				IMU1data, IMU2data, IMU3data, IMU4data, IMU5data, IMU6data = GetIMUvalsNOW()
+				RecordingBufferExplicit[4].append(IMU1data)
+				RecordingBufferExplicit[5].append(IMU2data)
+				RecordingBufferExplicit[6].append(IMU3data)
+				RecordingBufferExplicit[7].append(IMU4data)
+				RecordingBufferExplicit[8].append(IMU5data)
+				RecordingBufferExplicit[9].append(IMU6data)
+				
+				# VISION DATA
+				RecordingBufferExplicit[10].append(c_frame_ds)
+				RecordingBufferExplicit[11].append(d_frame)
+				RecordingBufferExplicit[12].append(ir_frame)
+				RecordingBufferExplicit[13].append(wrist_frame)
+					
+					
 				
 		
 		
@@ -736,6 +889,11 @@ def KeyPressThread():
 						instructions_img = pygame.image.load('instructions_j8.jpg')
 						print("Manual control - current joint set to: NECK \n")
 						
+					if event.key == K_9:
+						RobotCurrentJoint = 8
+						instructions_img = pygame.image.load('instructions_j9.jpg')
+						print("Manual control - CUSTOM COMPOSITE MOTION (shoulder pitch + elbow pitch) \n")
+						
 					# INCREASE JOINT SPEED
 					if event.key == K_a:
 						newSpeed = RobotJointSpeeds[RobotCurrentJoint] + 10
@@ -806,41 +964,84 @@ def KeyPressThread():
 						is_recording_motions = 0
 						last_reverse_dir = -1
 						
+					if event.key == K_u:
+						print("\n --- LOAD SAVED MOTION: ---\n")
+						file_to_load = input("Enter the name of your MOTION file to load: ")
+						try:
+							with open(file_to_load, 'rb') as f:
+								MOTION_BUFFER_LOADED = pickle.load(f)
+						except:
+							print("Unable to load file: "+str(file_to_load))
+							
+					if event.key == K_i:
+						print("\n --- Play Loaded Motion Sequence from File... ---\n")
+						ReplaySavedManualMotion(MOTION_BUFFER_LOADED, seq_dir = 1)
+						
 					if event.key == K_g:
 						print("\n --- Reversing last motion sequence... ---\n")
-						print(RecordingBufferExplicit)
 						ReplaySavedManualMotion(RecordingBufferExplicit, seq_dir = last_reverse_dir)
 						# So after the first time a motion is saved, it will be reversed, as set in the motion_save above
 						last_reverse_dir = last_reverse_dir * -1
 							
+					if event.key == K_h:	
+						print("\n --- Current Values of IMUs RIGHT NOW: ---\n")
+						IMU1data, IMU2data, IMU3data, IMU4data, IMU5data, IMU6data = GetIMUvalsNOW()
+						IMU1_last_reading = IMU1data
+						IMU2_last_reading = IMU2data
+						IMU3_last_reading = IMU3data
+						IMU4_last_reading = IMU4data
+						IMU5_last_reading = IMU5data
+						IMU6_last_reading = IMU6data
+						print("IMU1 - r/y/w/ax/ay/az : " + str(IMU1data))
+						print("IMU2 - r/y/w/ax/ay/az : " + str(IMU2data))
+						print("IMU3 - r/y/w/ax/ay/az : " + str(IMU3data))
+						print("IMU4 - r/y/w/ax/ay/az : " + str(IMU4data))
+						print("IMU5 - r/y/w/ax/ay/az : " + str(IMU5data))
+						print("IMU6 - r/y/w/ax/ay/az : " + str(IMU6data))
+						print("IMU last readings set as these values.")
 						
-		
-		'''if msvcrt.kbhit():
-			n = msvcrt.getch().decode("utf-8").lower()
-			print(n)
-			
+						
+					if event.key == K_j:
+						print("\n --- Saving last printed IMUs as reference: ---\n")
+						IMU_REFERENCE = [IMU1_last_reading, IMU2_last_reading, IMU3_last_reading, IMU4_last_reading, IMU5_last_reading, IMU6_last_reading] 
+						imu_reference_to_save = input("Enter the name of your IMU_REFERENCE to save: ")
+						with open(imu_reference_to_save+".IMU", 'wb') as fp:
+							pickle.dump(IMU_REFERENCE, fp)
+						print("Saved motion as: " + imu_reference_to_save+".IMU" + "\n")
+						
+					if event.key == K_k:
+						print("\n --- Distance from home position in terms of IMUs: ---\n")
+						# DRIVE EACH MOTOR SEQUENTIALLY, FROM J1 to J6, 
+						# UNTIL WE GET REAL-TIME IMU READINGS SIMILAR TO OUR DESIRED INITIAL READINGS 
+						IMU1data, IMU2data, IMU3data, IMU4data, IMU5data, IMU6data = GetIMUvalsNOW()
+						IMU1_last_reading = IMU1data
+						IMU2_last_reading = IMU2data
+						IMU3_last_reading = IMU3data
+						IMU4_last_reading = IMU4data
+						IMU5_last_reading = IMU5data
+						IMU6_last_reading = IMU6data
+						LastIMUs = [IMU1data, IMU2data, IMU3data, IMU4data, IMU5data, IMU6data]
+						
+						for i in range(0,6):
+							print("IMU//"+str(i)+"//:"); print(LastIMUs[i])
+							print("IMU_REFERENCE//"+str(i)+"//:"); print(IMU_REFERENCE[i])
+							print("Difference between IMU//"+str(i)+"// and its reference: ")
+							diff = np.array(LastIMUs[i]) - np.array(IMU_REFERENCE[i])
+							print(diff)
+							print("Mean and max absolute differences: ")
+							print(str(np.mean(np.abs(diff)))+" // "+str(np.max(np.abs(diff))))
+							print("")
+						
+						
+					if event.key == K_l:
+						print("\n --- LOAD IMU REFERENCE: ---\n")
+						file_to_load = input("Enter the name of your IMU file to load as IMU_REFERENCE: ")
+						try:
+							with open(file_to_load, 'rb') as f:
+								IMU_REFERENCE = pickle.load(f)
+						except:
+							print("Unable to load file: "+str(file_to_load))
 				
-			############## CURRENT TODO: FIX CUSTOM COMMANDS BELOW ####################	
-				
-			if n == 'e':	# ENTER CUSTOM COMMAND STRING
-				cmd_str = input("Enter your custom command string and press enter: ")
-				CustomCommandString = cmd_str
-				cmd_str = cmd_str + "\n"
-				cmd_str = cmd_str.encode('utf-8')
-				print(cmd_str)
-				RobotSerialController.write(cmd_str)
-				print("^ Running this custom command string. Press 'R' to reverse.")
-				
-			if n == 'r':	# REVERSE THE LAST CUSTOM COMMAND STRING
-				cmd_str = ReverseCustomMoveCommand(CustomCommandString, debug_mode=1) # argument will hold the last custom command, by above logic. 
-				# For now we are assuming speeds have been kept constant between the initial cmd and calling its reverse (does this matter for position?)
-				CustomCommandString = cmd_str # for easy testing, allow us to keep reversing back and forth between 2 workspace positions
-				cmd_str = cmd_str + "\n"
-				cmd_str = cmd_str.encode('utf-8')
-				print(cmd_str)
-				RobotSerialController.write(cmd_str)
-				print("^ Running this custom command string. Press 'R' to reverse.")
-		'''		
 	sys.exit() # if breaking from while loop
 	
 ####################################### VISION SENSOR READING ##################################################

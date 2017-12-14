@@ -565,7 +565,7 @@ void loop() {
           stepDelay7 = 60.0 * 1000.0 / stepsPerRevolution7 * 1000.0 / tempSpeed7;
           stepDelay8 = 60.0 * 1000.0 / stepsPerRevolution8 * 1000.0 / tempSpeed8; 
           
-          Serial.println("Motion mode 1 activated.");
+          //Serial.println("Motion mode 1 activated.");
         }
 
         // FIND THE MIN DELAY (what happens if JXstep is 0 ? Then min will become 0

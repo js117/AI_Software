@@ -81,11 +81,11 @@ def ZYXEulerMatrix(zAngle,yAngle,xAngle):
 
     Reuler = Rz.dot(Ry).dot(Rx)
     
-    final = np.zeros((4,4))
-    final[0:3,0:3] = Reuler
-    final[3,3] = 1
+    #final = np.zeros((4,4))
+    #final[0:3,0:3] = Reuler
+    #final[3,3] = 1
     
-    return final
+    return Reuler
     
 # Uses Rodriguez' formula for e^(w_hat*t), assuming norm(w) == 1, where hat is the wedge operator
 def exp_twist_theta_revolute(e,t):
@@ -112,17 +112,91 @@ def cross(x,y):
     return x_hat.dot(y)
     
 def cos(x):
-    return np.cos(x)
+    return np.cos(x * np.pi / 180)
     
 def sin(x):
-    return np.sin(x)
+    return np.sin(x * np.pi / 180)
     
 def atan2(y,x):
     return np.arctan2(y,x)
 	
+def GetThetaAndWFromR(R):
+	theta = np.arccos((np.trace(R)-1)/2)
+	w = np.array([0,0,1]) # arbitrary default
+	if theta != 0:
+		w = 1/(2*np.sin(theta)) * np.array([R[2,1] - R[1,2], 
+											R[0,2] - R[2,0],
+											R[1,0] - R[0,1]])
+	return theta, w
+	
+
+			
+def AnglesFromIMUs():
+	return
+	
+def FwdKinAll():
+	return 
+	
+####################################### GLOBAL VARIABLES FOR 6-DOF CAESAR ROBOT ##################################	
+	
 global w1,w2,w3,w4,w5,w6
+global wx1,wx2,wx3,wx4,wx5,wx6
 global q1,q2,q3,q4,q5,q6
 global x1,x2,x3,x4,x5,x6
+global e1,e2,e3,e4,e5,e6
+global ex1,ex2,ex3,ex4,ex5,ex6
+global s1_rpy_axayaz, s2_rpy_axayaz, s3_rpy_axayaz, s4_rpy_axayaz, s5_rpy_axayaz, s6_rpy_axayaz
+
+
+# INITIAL SENSOR ROTATION MATRICES
+global R_sx1_0, R_sx2_0, R_sx3_0, R_sx4_0, R_sx5_0, R_sx6_0
+
+# REAL-TIME SENSOR ROTATION MATRICES
+global R_sx1_t, R_sx2_t, R_sx3_t, R_sx4_t, R_sx5_t, R_sx6_t
+
+# INITIAL SENSOR (+ END-EFFECTOR) HOMOGENEOUS TRANSFORM MATRICES
+global g_sx1_0, g_sx2_0, g_sx3_0, g_sx4_0, g_sx5_0, g_sx6_0, g_sxe_0
+
+# REAL-TIME SENSOR (+ END-EFFECTOR) HOMOGENEOUS TRANSFORM MATRICES
+global g_sx1_t, g_sx2_t, g_sx3_t, g_sx4_t, g_sx5_t, g_sx6_t, g_sxe_t
+
+# Matching IMUs to thetas on Caesar robot:
+global theta1_imu_init, theta1_imu_id
+global theta2_imu_init, theta2_imu_id
+global theta3_imu_init, theta3_imu_id
+global theta4_imu_init, theta4_imu_id
+global theta5_imu_init, theta5_imu_id
+global theta6_imu_init, theta6_imu_id
+
+g_sx1_0 = np.zeros([4,4])
+g_sx2_0 = np.zeros([4,4])
+g_sx3_0 = np.zeros([4,4])
+g_sx4_0 = np.zeros([4,4])
+g_sx5_0 = np.zeros([4,4])
+g_sx6_0 = np.zeros([4,4])
+g_sxe_0 = np.zeros([4,4])
+
+g_sx1_t = np.zeros([4,4])
+g_sx2_t = np.zeros([4,4])
+g_sx3_t = np.zeros([4,4])
+g_sx4_t = np.zeros([4,4])
+g_sx5_t = np.zeros([4,4])
+g_sx6_t = np.zeros([4,4])
+g_sxe_t = np.zeros([4,4])
+
+R_sx1_0 = np.zeros([3,3])
+R_sx2_0 = np.zeros([3,3])
+R_sx3_0 = np.zeros([3,3])
+R_sx4_0 = np.zeros([3,3])
+R_sx5_0 = np.zeros([3,3])
+R_sx6_0 = np.zeros([3,3])
+
+R_sx1_t = np.zeros([3,3])
+R_sx2_t = np.zeros([3,3])
+R_sx3_t = np.zeros([3,3])
+R_sx4_t = np.zeros([3,3])
+R_sx5_t = np.zeros([3,3])
+R_sx6_t = np.zeros([3,3])
 
 # CAESAR PARAMS -- DEC 2017 #
 w1 = np.array([0,0,1])
@@ -162,6 +236,13 @@ s6_rpy_axayaz = np.array([6, -1.38, 0.13, 50.56, 0.0, -0.02, 0.97])			# (theta5)
 s1_rpy_axayaz = np.array([1, -179.92, 0.12, -56.89, 0.0, 0.0, -1.0])		# (theta6) END EFFECTOR: 		ID#1
 s2_rpy_axayaz = np.array([2, 0.01, 0.01, -165.41, 0.0, 0.0, 0.97])			# (theta4) ELBOW ROLL:   		ID#2
 s5_rpy_axayaz = np.array([5, -179.41, 0.03, -77.59, 0.0, -0.01, -1.01])		# (theta3) ELBOW PITCH:	 		ID#5
+
+theta1_imu_init = s4_rpy_axayaz; theta1_imu_id = 4
+theta2_imu_init = s3_rpy_axayaz; theta2_imu_id = 3
+theta3_imu_init = s5_rpy_axayaz; theta3_imu_id = 5
+theta4_imu_init = s2_rpy_axayaz; theta4_imu_id = 2
+theta5_imu_init = s6_rpy_axayaz; theta5_imu_id = 6
+theta6_imu_init = s1_rpy_axayaz; theta1_imu_id = 4
 	
 #################################
 
@@ -169,37 +250,57 @@ if __name__ == "__main__":
 	print("Testing kinematics program: ")
 	
 	
-	print(w1)
-	print(-1*w1)
-	print(w1.shape)
-	print("-----")
-	print(q1)
-	print(q1.shape)
+	########## COPY BELOW INTO PROGRAM THAT INCLUDES THIS FILE TO INIT THE ROBOT ###########
+	R_sx1_0 = ZYXEulerMatrix(theta1_imu_init[1],theta1_imu_init[2],theta1_imu_init[3])
+	R_sx2_0 = ZYXEulerMatrix(theta2_imu_init[1],theta2_imu_init[2],theta2_imu_init[3])
+	R_sx3_0 = ZYXEulerMatrix(theta3_imu_init[1],theta3_imu_init[2],theta3_imu_init[3])
+	R_sx4_0 = ZYXEulerMatrix(theta4_imu_init[1],theta4_imu_init[2],theta4_imu_init[3])
+	R_sx5_0 = ZYXEulerMatrix(theta5_imu_init[1],theta5_imu_init[2],theta5_imu_init[3])
+	R_sx6_0 = ZYXEulerMatrix(theta6_imu_init[1],theta6_imu_init[2],theta6_imu_init[3])
 	
+	print(R_sx1_0); print("--------")
+	print(R_sx2_0); print("--------")
+	print(R_sx3_0); print("--------")
+	print(R_sx4_0); print("--------")
+	print(R_sx5_0); print("--------")
+	print(R_sx6_0); print("--------")
 	
-	print(e1); print("---")
-	print(e2); print("---")
-	print(e3); print("---")
-	print(e4); print("---")
-	print(e5); print("---")
-	print(e6); print("---")
+	print("GetThetaAndWFromR(R):")
+	t1, wx1 = GetThetaAndWFromR(R_sx1_0); print(str(t1 *180/np.pi)+" --- "+str(wx1)); print("")
+	t2, wx2 = GetThetaAndWFromR(R_sx2_0); print(str(t2 *180/np.pi)+" --- "+str(wx2)); print("")
+	t3, wx3 = GetThetaAndWFromR(R_sx3_0); print(str(t3 *180/np.pi)+" --- "+str(wx3)); print("")
+	t4, wx4 = GetThetaAndWFromR(R_sx4_0); print(str(t4 *180/np.pi)+" --- "+str(wx4)); print("")
+	t5, wx5 = GetThetaAndWFromR(R_sx5_0); print(str(t5 *180/np.pi)+" --- "+str(wx5)); print("")
+	t6, wx6 = GetThetaAndWFromR(R_sx6_0); print(str(t6 *180/np.pi)+" --- "+str(wx6)); print("")	
 	
-	test1 =  exp_twist_theta_revolute(e1,t=0)
-	print(test1); print("---")
-	test2 =  exp_twist_theta_revolute(e2,t=0)
-	print(test2); print("---")
-	test3 =  exp_twist_theta_revolute(e3,t=0)
-	print(test3); print("---")
-	test4 =  exp_twist_theta_revolute(e4,t=0)
-	print(test4); print("---")
-	test5 =  exp_twist_theta_revolute(e5,t=0)
-	print(test5); print("---")
-	test6 =  exp_twist_theta_revolute(e6,t=0)
-	print(test6); print("---")
+	ex1 = np.concatenate((cross(-1*wx1, x1), wx1), axis=0)
+	ex2 = np.concatenate((cross(-1*wx2, x2), wx2), axis=0)
+	ex3 = np.concatenate((cross(-1*wx3, x3), wx3), axis=0)
+	ex4 = np.concatenate((cross(-1*wx4, x4), wx4), axis=0)
+	ex5 = np.concatenate((cross(-1*wx5, x5), wx5), axis=0)
+	ex6 = np.concatenate((cross(-1*wx6, x6), wx6), axis=0) 
 	
+	print("Homogeneous matrices from theta, screw axes :")
+	g_sx1_0 = exp_twist_theta_revolute(ex1,t1)
+	g_sx2_0 = exp_twist_theta_revolute(ex2,t2)
+	g_sx3_0 = exp_twist_theta_revolute(ex3,t3)
+	g_sx4_0 = exp_twist_theta_revolute(ex4,t4)
+	g_sx5_0 = exp_twist_theta_revolute(ex5,t5)
+	g_sx6_0 = exp_twist_theta_revolute(ex6,t6)
+	print(g_sx1_0); print("-----")
+	print(g_sx2_0); print("-----")
+	print(g_sx3_0); print("-----")
+	print(g_sx4_0); print("-----")
+	print(g_sx5_0); print("-----")
+	print(g_sx6_0); print("-----")
 	
-	
-	
+	print("Screw axes of sensors: ")
+	print(ex1); print("-------")
+	print(ex2); print("-------")
+	print(ex3); print("-------")
+	print(ex4); print("-------")
+	print(ex5); print("-------")
+	print(ex6); print("-------")
 	
 	
 	
