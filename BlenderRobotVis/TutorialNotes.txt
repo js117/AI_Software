@@ -2,6 +2,22 @@
 ===== BLENDER TUTORIAL NOTES =====
 ==================================
 
+-----------------------------------------------
+------------ Python Blender Notes -------------
+-----------------------------------------------
+
+sudo apt-get install python python-pip 
+
+"On Debian, using the Debian-packaged version of Blender, as far as I can tell, a system python executable is used."
+"If this doesn't work, delete the blender/2.78/python directory - which will make Blender use the system python" 
+
+
+
+
+
+
+
+
 Mouse: PAN: SHIFT + MMB to pan (move) where MMB == middle mouse button
        ZOOM: MMB scrool
 	   ROTATE: hold MMB, move mouse! 
