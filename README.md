@@ -26,5 +26,6 @@ Some basic setup tips on Ubuntu:
 	sudo apt-get update
 	sudo apt-get install notepadqq
 	
-	
+	# Nvidia drivers: 
+	# https://www.nvidia.com/en-us/data-center/gpu-accelerated-applications/tensorflow/ 
 	
