@@ -3,23 +3,75 @@ import math
 import time
 
 import sys
-import serial
+#import serial
 import glob
-import msvcrt
+#import cv2
+#import tensorflow as tf
+
+
+
+import os 
+
+print("Executable: ")
+print(os.path.dirname(sys.executable))
+print(sys.executable)
+print("Sys version: ")
+print(sys.version)
+print("os.__file__: ")
+print(os.__file__)
+# ^Use the above to figure out where Blender's python executable is. Then get pip and the libs needed.
 
 # Setting up tips:
 # Download 'get-pip.py' from online, run using Blender's Python executable.
 # Then use pip.exe to install packages as needed. 
+# e.g.: 
+# [Open cmd.exe in admin mode] 
+# cd C:\Program Files\Blender Foundation\Blender\2.79\python\bin
+# python get_pip.py 
+# cd C:\Program Files\Blender Foundation\Blender\2.79\python\Scripts
+# pip.exe install opencv-python
 
-# Accessing Blender Python console: Shift + F4
+# USING ANOTHER PYTHON INSTALL: 
+# - Make sure it's the same as sys.version, e.g. Python 3.5
+# - Try the following: 
+# 	import sys
+#	sys.path.append("C:/Python32/Lib/site-packages")
+#	import numpy
+#	print(dir(numpy))
+
 # Viewing console from Blender: Window --> Toggle System Console
 
 #port=''.join(glob.glob("/dev/ttyUSB*"))
 #ser = serial.Serial(port,115200)
 #print("connected to: " + ser.portstr)
 
-# TODO: look at extending script with user input, e.g.
-# https://stackoverflow.com/questions/19554023/how-to-capture-keyboard-input-in-blender-using-python 
+#if os.name == 'nt': # Microsoft OS 
+#    import msvcrt
+    
+
+# LIBRARY CONSIDERATIONS: 
+#  msacm32.dll  avifil32.dll  avicap32.dll  msvfw32.dll
+#
+
+try:
+    from msvcrt import getch  # try to import Windows version
+except ImportError:
+    def getch():   # define non-Windows version
+        import termios, tty
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+ 
+def keypress():
+    global char
+    char = getch()
+
+
 
 print("\nStarting script\n")
 
@@ -102,53 +154,57 @@ bpy.app.handlers.frame_change_pre.append(frameChange)
 
 while True:
     
-    if msvcrt.kbhit():
-        n = msvcrt.getch().decode("utf-8").lower()
-        if (n == '0'):
-            print("Exiting user input mode.\n")
-            break
+    n = getch()
+    if os.name == 'nt':
+        n = n.decode('ASCII')
         
-        ################ JOINT SELECTION ###############
-        if (n == '1'):
-            print("--- Switching to joint 1: Base Rotation ---")
-            CurrentJoint = J1_y
-            CurrentJointLocalAxis = 'Y' 
-        if (n == '2'):
-            print("--- Switching to joint 2: Shoulder Pitch ---")
-            CurrentJoint = J2_y
-            CurrentJointLocalAxis = 'Y' 
-        if (n == '3'):
-            print("--- Switching to joint 3: Elbow Pitch ---")
-            CurrentJoint = J3_y
-            CurrentJointLocalAxis = 'Y' 
-        if (n == '4'):
-            print("--- Switching to joint 4: Elbow Roll ---")
-            CurrentJoint = J4_y
-            CurrentJointLocalAxis = 'Y' 
-        if (n == '5'):
-            print("--- Switching to joint 5: Wrist Pitch ---")
-            CurrentJoint = J5_y
-            CurrentJointLocalAxis = 'Y' 
-        if (n == '6'):
-            print("--- Switching to joint 6: Wrist Roll ---")
-            CurrentJoint = J6_y
-            CurrentJointLocalAxis = 'Y' 
-            
-        ################ SPEED/STEP SIZE ###############
-        if (n == 'a'):
-            CurrentDegPerStep = CurrentDegPerStep * DegPerStepChangeFactor 
-            print("Increasing angle step size to (degress): "+str(CurrentDegPerStep))
-        if (n == 's'):
-            CurrentDegPerStep = CurrentDegPerStep / DegPerStepChangeFactor 
-            print("Decreasing angle step size to (degress): "+str(CurrentDegPerStep))    
+    print(n)
+    
+    if (n == '0'):
+        print("Exiting user input mode.\n")
+        break
         
+    ################ JOINT SELECTION ###############
+    if (n == '1'):
+        print("--- Switching to joint 1: Base Rotation ---")
+        CurrentJoint = J1_y
+        CurrentJointLocalAxis = 'Y' 
+    if (n == '2'):
+        print("--- Switching to joint 2: Shoulder Pitch ---")
+        CurrentJoint = J2_y
+        CurrentJointLocalAxis = 'Y' 
+    if (n == '3'):
+        print("--- Switching to joint 3: Elbow Pitch ---")
+        CurrentJoint = J3_y
+        CurrentJointLocalAxis = 'Y' 
+    if (n == '4'):
+        print("--- Switching to joint 4: Elbow Roll ---")
+        CurrentJoint = J4_y
+        CurrentJointLocalAxis = 'Y' 
+    if (n == '5'):
+        print("--- Switching to joint 5: Wrist Pitch ---")
+        CurrentJoint = J5_y
+        CurrentJointLocalAxis = 'Y' 
+    if (n == '6'):
+        print("--- Switching to joint 6: Wrist Roll ---")
+        CurrentJoint = J6_y
+        CurrentJointLocalAxis = 'Y' 
         
-        ################ FORWARD JOINT MOTION ###############
-        if (n == 'q'):
-            print("Stepping current joint forward.")
-            step_angle(CurrentJoint, CurrentJointLocalAxis, CurrentDegPerStep, 1)
-            bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
-        if (n == 'w'):
-            print("Stepping current joint backward.")
-            step_angle(CurrentJoint, CurrentJointLocalAxis, CurrentDegPerStep, -1)
-            bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+    ################ SPEED/STEP SIZE ###############
+    if (n == 'a'):
+        CurrentDegPerStep = CurrentDegPerStep * DegPerStepChangeFactor 
+        print("Increasing angle step size to (degress): "+str(CurrentDegPerStep))
+    if (n == 's'):
+        CurrentDegPerStep = CurrentDegPerStep / DegPerStepChangeFactor 
+        print("Decreasing angle step size to (degress): "+str(CurrentDegPerStep))    
+    
+    
+    ################ FORWARD JOINT MOTION ###############
+    if (n == 'q'):
+        print("Stepping current joint forward.")
+        step_angle(CurrentJoint, CurrentJointLocalAxis, CurrentDegPerStep, 1)
+        bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+    if (n == 'w'):
+        print("Stepping current joint backward.")
+        step_angle(CurrentJoint, CurrentJointLocalAxis, CurrentDegPerStep, -1)
+        bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
