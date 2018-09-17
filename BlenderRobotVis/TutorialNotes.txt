@@ -165,3 +165,11 @@ Methodology: keep extending bone along links into joints
 	* Select a bunch of faces in edit mode of the portion you want to turn into a discrete part
 	* P > Separate Selection
 	* BAM!
+	
+-----------------------------------------------
+--- Part IV: Exporting, Other Programs, Etc ---
+-----------------------------------------------
+
+- MAKE SURE IT'S ALL SELECTED: in Blender top right panel ("Scene"), make sure the mouse button is clicked on the Armature and all other parts of the model
+
+- Careful with file types: stl, obj are just meshes / geometry. I.e. no materials. 
